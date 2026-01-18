@@ -10,7 +10,7 @@ import { NET_Y } from '../utils/constants';
 import { NET } from '../assets/sprites';
 import { SpriteRenderer } from '../renderer/SpriteRenderer';
 
-const SPRITE_SCALE = 4;
+const SPRITE_SCALE = 2;
 
 export class Net implements Entity {
   x: number;

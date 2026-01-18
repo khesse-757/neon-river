@@ -1,85 +1,87 @@
 /**
- * Golden Koi Fish Entity
+ * Electric Eel Hazard Entity
  *
- * Rare fish worth 5 lbs. Follows the river curve, swims faster than Bluegill.
- * Has prominent golden bioluminescent glow.
+ * Deadly hazard - instant game over on contact.
+ * Follows river path with additional S-curve slither motion.
  */
 
-import type { FishEntity, BoundingBox } from '../utils/types';
-import { GOLDEN_KOI_WEIGHT, SPEEDS, GAME_HEIGHT } from '../utils/constants';
+import type { HazardEntity, BoundingBox } from '../utils/types';
+import { SPEEDS, GAME_HEIGHT } from '../utils/constants';
 import { getRiverPoint, getRiverWidth } from '../utils/riverPath';
-import { GOLDEN_KOI } from '../assets/sprites';
+import { ELECTRIC_EEL } from '../assets/sprites';
 import { SpriteRenderer } from '../renderer/SpriteRenderer';
 
 const SPRITE_SCALE = 2;
 const OFF_SCREEN_MARGIN = 50;
 
-export class GoldenKoi implements FishEntity {
+// S-curve slither parameters (overlaid on river path)
+const SLITHER_AMPLITUDE = 0.3; // How far it sways (fraction of river width)
+const SLITHER_FREQUENCY = 3; // Oscillations per river length
+
+export class ElectricEel implements HazardEntity {
   x: number;
   y: number;
   width: number;
   height: number;
-  weight: number = GOLDEN_KOI_WEIGHT;
-  points: number = GOLDEN_KOI_WEIGHT;
-  type = 'goldenKoi' as const;
+  type = 'electricEel' as const;
+  isLethal = true;
 
   private renderer: SpriteRenderer;
-  private speed: number = SPEEDS.GOLDEN_KOI;
+  private speed: number = SPEEDS.ELECTRIC_EEL;
 
   // River path tracking
   private pathT: number;
-  private pathOffset: number;
-  private wobblePhase: number;
+  private baseOffset: number;
 
-  constructor(x: number, y: number, pathT: number = 0, pathOffset: number = 0) {
-    this.renderer = new SpriteRenderer(GOLDEN_KOI);
+  constructor(
+    _x: number,
+    _y: number,
+    pathT: number = 0,
+    pathOffset: number = 0
+  ) {
+    this.renderer = new SpriteRenderer(ELECTRIC_EEL);
     const dims = this.renderer.getDimensions();
 
     this.pathT = pathT;
-    this.pathOffset = pathOffset;
-    this.wobblePhase = Math.random() * Math.PI * 2;
+    this.baseOffset = pathOffset;
 
     // Set initial position from path parameters
     const point = getRiverPoint(pathT);
-    const width = getRiverWidth(pathT);
-    this.x = point.x + pathOffset * width * 0.4;
+    this.x = point.x;
     this.y = point.y;
-
-    // Override with provided x, y if not following path from start
-    if (pathT === 0 && pathOffset === 0) {
-      this.x = x;
-      this.y = y;
-    }
 
     this.width = dims.width * SPRITE_SCALE;
     this.height = dims.height * SPRITE_SCALE;
   }
 
   /**
-   * Update fish position - follows river curve (faster than Bluegill)
+   * Update eel position - follows river with S-curve slither
    */
   update(delta: number): void {
     // Move along the river path
     const pathSpeed = this.speed / (GAME_HEIGHT * 0.8);
     this.pathT += pathSpeed * delta;
 
-    // Add wobble for natural swimming
-    this.wobblePhase += delta * 4; // Faster wobble
-    const wobble = Math.sin(this.wobblePhase) * 0.06;
-
     // Calculate position from path
     const point = getRiverPoint(this.pathT);
     const width = getRiverWidth(this.pathT);
 
-    // Update position with wobble
-    this.x = point.x + (this.pathOffset + wobble) * width * 0.4;
+    // S-curve slither: sinusoidal offset based on position along path
+    const slitherPhase = this.pathT * SLITHER_FREQUENCY * Math.PI * 2;
+    const slitherOffset = Math.sin(slitherPhase) * SLITHER_AMPLITUDE;
+
+    // Combine base offset with slither
+    const totalOffset = this.baseOffset + slitherOffset;
+
+    // Update position (stay within river bounds)
+    this.x = point.x + totalOffset * width * 0.4;
     this.y = point.y;
 
     this.renderer.update(delta);
   }
 
   /**
-   * Render the fish
+   * Render the eel
    */
   render(ctx: CanvasRenderingContext2D): void {
     this.renderer.draw(ctx, {
@@ -102,7 +104,7 @@ export class GoldenKoi implements FishEntity {
   }
 
   /**
-   * Check if fish has left the screen (past end of river path)
+   * Check if eel has left the screen
    */
   isOffScreen(): boolean {
     return this.y > GAME_HEIGHT + OFF_SCREEN_MARGIN || this.pathT > 1.1;

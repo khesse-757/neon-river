@@ -1,10 +1,11 @@
 /**
- * Spawner - Manages fish spawning and lifecycle
+ * Spawner - Manages fish and hazard spawning and lifecycle
  *
- * Spawns fish at intervals, tracks missed fish, removes off-screen fish.
+ * Spawns fish/eels at the river source, tracks missed fish, removes off-screen entities.
+ * Entities follow the river path as they swim downstream.
  */
 
-import type { FishEntity } from '../utils/types';
+import type { FishEntity, HazardEntity } from '../utils/types';
 import {
   INITIAL_SPAWN_INTERVAL,
   MIN_SPAWN_INTERVAL,
@@ -12,11 +13,14 @@ import {
   SPAWN_WEIGHTS,
   BOUNDS,
 } from '../utils/constants';
+import { getRiverPoint, getRiverWidth } from '../utils/riverPath';
 import { Bluegill } from '../entities/Bluegill';
 import { GoldenKoi } from '../entities/GoldenKoi';
+import { ElectricEel } from '../entities/ElectricEel';
 
 export class Spawner {
   private entities: FishEntity[] = [];
+  private eels: HazardEntity[] = [];
   private spawnInterval: number = INITIAL_SPAWN_INTERVAL;
   private spawnTimer: number = 0;
   private missedWeight: number = 0;
@@ -30,7 +34,7 @@ export class Spawner {
 
     // Spawn fish when timer exceeds interval
     if (this.spawnTimer >= this.spawnInterval) {
-      this.spawnFish();
+      this.spawnEntity();
       this.spawnTimer = 0;
 
       // Decrease interval (speed up spawning)
@@ -45,34 +49,45 @@ export class Spawner {
       fish.update(delta);
     }
 
-    // Remove off-screen fish and track missed weight
+    // Update all eels
+    for (const eel of this.eels) {
+      eel.update(delta);
+    }
+
+    // Remove off-screen entities
     this.removeOffScreenFish();
+    this.removeOffScreenEels();
   }
 
   /**
-   * Spawn a new fish at random X position above screen
+   * Spawn a new entity at the river source
    */
-  private spawnFish(): void {
-    const spawnWidth = BOUNDS.RIGHT - BOUNDS.LEFT;
-    const x = BOUNDS.LEFT + Math.random() * spawnWidth;
-    const y = BOUNDS.SPAWN_Y;
+  private spawnEntity(): void {
+    // Spawn at river source (t = 0)
+    const spawnT = 0;
+    const point = getRiverPoint(spawnT);
+    const width = getRiverWidth(spawnT);
 
-    // Weighted random selection (ignore eel for now)
+    // Random lateral offset within river (-0.8 to 0.8 of half-width)
+    const pathOffset = (Math.random() - 0.5) * 1.6;
+
+    // Calculate actual spawn position
+    const x = point.x + pathOffset * width * 0.4;
+    const y = point.y;
+
+    // Weighted random selection
     const roll = Math.random();
     const bluegillThreshold = SPAWN_WEIGHTS.BLUEGILL;
     const koiThreshold = bluegillThreshold + SPAWN_WEIGHTS.GOLDEN_KOI;
 
-    let fish: FishEntity;
     if (roll < bluegillThreshold) {
-      fish = new Bluegill(x, y);
+      this.entities.push(new Bluegill(x, y, spawnT, pathOffset));
     } else if (roll < koiThreshold) {
-      fish = new GoldenKoi(x, y);
+      this.entities.push(new GoldenKoi(x, y, spawnT, pathOffset));
     } else {
-      // Electric eel would go here - for now spawn Bluegill
-      fish = new Bluegill(x, y);
+      // Electric eel - add to separate hazards array
+      this.eels.push(new ElectricEel(x, y, spawnT, pathOffset));
     }
-
-    this.entities.push(fish);
   }
 
   /**
@@ -94,11 +109,21 @@ export class Spawner {
   }
 
   /**
-   * Render all fish
+   * Remove eels that have left the screen (no penalty for missed eels)
+   */
+  private removeOffScreenEels(): void {
+    this.eels = this.eels.filter((eel) => eel.y <= BOUNDS.DESPAWN_Y);
+  }
+
+  /**
+   * Render all entities (fish and eels)
    */
   render(ctx: CanvasRenderingContext2D): void {
     for (const fish of this.entities) {
       fish.render(ctx);
+    }
+    for (const eel of this.eels) {
+      eel.render(ctx);
     }
   }
 
@@ -117,6 +142,13 @@ export class Spawner {
   }
 
   /**
+   * Get active eel hazards (for collision detection)
+   */
+  getEels(): HazardEntity[] {
+    return this.eels;
+  }
+
+  /**
    * Remove a specific fish (when caught)
    */
   removeFish(fish: FishEntity): void {
@@ -131,6 +163,7 @@ export class Spawner {
    */
   reset(): void {
     this.entities = [];
+    this.eels = [];
     this.spawnInterval = INITIAL_SPAWN_INTERVAL;
     this.spawnTimer = 0;
     this.missedWeight = 0;

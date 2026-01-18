@@ -8,8 +8,8 @@ export const GAME_HEIGHT = 640;
 export const PIXEL_SCALE = 1; // Was 2, reduced to fit viewport
 
 // Game rules
-export const WIN_WEIGHT = 10; // TODO: Change back to 200 for production
-export const MAX_MISSED_WEIGHT = 5; // TODO: Change back to 20 for production
+export const WIN_WEIGHT = 200;
+export const MAX_MISSED_WEIGHT = 20;
 
 // Entity weights (lbs)
 export const BLUEGILL_WEIGHT = 1;
