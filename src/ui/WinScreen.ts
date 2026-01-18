@@ -11,6 +11,9 @@ const BTN_WIDTH = 200;
 const BTN_HEIGHT = 48;
 const BTN_RADIUS = 6;
 
+// Delay before buttons become active (prevents accidental taps)
+const BUTTON_DELAY = 2.0;
+
 export class WinScreen {
   private time: number = 0;
   private finalCaught: number = 0;
@@ -118,27 +121,28 @@ export class WinScreen {
     const quitBtnY = GAME_HEIGHT * 0.83;
     const btnX = (GAME_WIDTH - BTN_WIDTH) / 2;
 
+    // Only show buttons after delay (prevents accidental taps on mobile)
+    if (this.time <= BUTTON_DELAY) return;
+
     // === PLAY AGAIN BUTTON (Primary - bright, celebratory) ===
-    if (this.time > 2) {
-      // Button background (golden/celebratory tint)
-      ctx.fillStyle = `rgba(0, 200, 160, ${textAlpha * 0.9})`;
-      ctx.beginPath();
-      ctx.roundRect(btnX, playBtnY, BTN_WIDTH, BTN_HEIGHT, BTN_RADIUS);
-      ctx.fill();
+    // Button background (golden/celebratory tint)
+    ctx.fillStyle = `rgba(0, 200, 160, ${textAlpha * 0.9})`;
+    ctx.beginPath();
+    ctx.roundRect(btnX, playBtnY, BTN_WIDTH, BTN_HEIGHT, BTN_RADIUS);
+    ctx.fill();
 
-      // Button border
-      ctx.strokeStyle = `rgba(100, 255, 220, ${textAlpha})`;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect(btnX, playBtnY, BTN_WIDTH, BTN_HEIGHT, BTN_RADIUS);
-      ctx.stroke();
+    // Button border
+    ctx.strokeStyle = `rgba(100, 255, 220, ${textAlpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(btnX, playBtnY, BTN_WIDTH, BTN_HEIGHT, BTN_RADIUS);
+    ctx.stroke();
 
-      // Button text
-      ctx.font = 'bold 20px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = `rgba(255, 255, 255, ${textAlpha})`;
-      ctx.fillText('PLAY AGAIN', GAME_WIDTH / 2, playBtnY + BTN_HEIGHT / 2);
-    }
+    // Button text
+    ctx.font = 'bold 20px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(255, 255, 255, ${textAlpha})`;
+    ctx.fillText('PLAY AGAIN', GAME_WIDTH / 2, playBtnY + BTN_HEIGHT / 2);
 
     // === QUIT BUTTON (Secondary - muted) ===
     // Button background
@@ -167,8 +171,11 @@ export class WinScreen {
 
   /**
    * Check if a canvas point is in the play again button
+   * Returns false until button delay has passed
    */
   isInPlayButton(canvasX: number, canvasY: number): boolean {
+    if (this.time <= BUTTON_DELAY) return false;
+
     const btnY = GAME_HEIGHT * 0.72;
     const btnX = (GAME_WIDTH - BTN_WIDTH) / 2;
     return (
@@ -181,8 +188,11 @@ export class WinScreen {
 
   /**
    * Check if a canvas point is in the quit button
+   * Returns false until button delay has passed
    */
   isInQuitButton(canvasX: number, canvasY: number): boolean {
+    if (this.time <= BUTTON_DELAY) return false;
+
     const btnY = GAME_HEIGHT * 0.83;
     const btnX = (GAME_WIDTH - BTN_WIDTH) / 2;
     return (

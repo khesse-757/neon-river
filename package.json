@@ -1,6 +1,6 @@
 {
   "name": "neon-river",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Pixel art arcade fishing game - catch fish, avoid eels, reach 200 lbs",
   "author": "khesse-757",
