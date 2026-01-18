@@ -5,7 +5,7 @@
 // Canvas dimensions
 export const GAME_WIDTH = 480;
 export const GAME_HEIGHT = 640;
-export const PIXEL_SCALE = 2;
+export const PIXEL_SCALE = 1; // Was 2, reduced to fit viewport
 
 // Game rules
 export const WIN_WEIGHT = 200;

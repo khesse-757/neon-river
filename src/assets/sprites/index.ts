@@ -6,10 +6,10 @@
  */
 
 export { BLUEGILL } from './bluegill';
+export { NET } from './net';
 
 // TODO: Add more sprites as they're created
 // export { GOLDEN_KOI } from './goldenKoi';
 // export { ELECTRIC_EEL } from './electricEel';
 // export { FISHERMAN } from './fisherman';
-// export { NET } from './net';
 // export { LANTERN } from './lantern';

@@ -4,23 +4,22 @@
  * A pixel art arcade fishing game.
  */
 
-import { GAME_WIDTH, GAME_HEIGHT, PIXEL_SCALE } from './utils/constants';
+import {
+  GAME_WIDTH,
+  GAME_HEIGHT,
+  PIXEL_SCALE,
+  BOUNDS,
+} from './utils/constants';
+import { InputManager } from './input/InputManager';
+import { Net } from './entities/Net';
 
-// Hide loading screen when ready
-function hideLoading(): void {
-  const loading = document.getElementById('loading');
-  if (loading) {
-    loading.classList.add('hidden');
-  }
-}
-
-// Initialize the game
 function init(): void {
+  // Remove loading screen
+  const loading = document.getElementById('loading');
+  if (loading) loading.remove();
+
   const app = document.getElementById('app');
-  if (!app) {
-    console.error('Could not find #app container');
-    return;
-  }
+  if (!app) return;
 
   // Create canvas
   const canvas = document.createElement('canvas');
@@ -31,42 +30,54 @@ function init(): void {
   app.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    console.error('Could not get 2D context');
-    return;
-  }
+  if (!ctx) return;
 
-  // Disable image smoothing for crisp pixels
   ctx.imageSmoothingEnabled = false;
 
-  // TODO: Initialize game systems
-  // - Renderer
-  // - Input manager
-  // - Audio manager
-  // - Scene
-  // - Game state
+  // Create input manager and net
+  const inputManager = new InputManager(canvas);
+  const net = new Net();
 
-  // For now, just show a placeholder
-  ctx.fillStyle = '#0a0a1a';
-  ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-  ctx.fillStyle = '#4ecdc4';
-  ctx.font = '16px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('NEON RIVER', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20);
-  ctx.fillStyle = '#666';
-  ctx.font = '12px monospace';
-  ctx.fillText('Phase 1: Foundation', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 10);
-  ctx.fillText(
-    'See CLAUDE.md for next steps',
-    GAME_WIDTH / 2,
-    GAME_HEIGHT / 2 + 30
-  );
-
-  hideLoading();
+  // Start game loop
+  runGameLoop(ctx, inputManager, net);
 }
 
-// Start when DOM is ready
+function runGameLoop(
+  ctx: CanvasRenderingContext2D,
+  inputManager: InputManager,
+  net: Net
+): void {
+  let lastTime = 0;
+
+  function gameLoop(currentTime: number): void {
+    const delta = (currentTime - lastTime) / 1000;
+    lastTime = currentTime;
+
+    // Update net position from input
+    const minX = BOUNDS.LEFT;
+    const maxX = BOUNDS.RIGHT - net.width;
+    net.setX(inputManager.getWorldX(minX, maxX));
+    net.update(delta);
+
+    // Render: clear background
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Render: draw title
+    ctx.fillStyle = '#4ecdc4';
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('NEON RIVER', GAME_WIDTH / 2, 40);
+
+    // Render: draw net
+    net.render(ctx);
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
