@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Neon River - A pixel art arcade fishing game"
+    />
+    <title>Neon River</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0a0a1a;
+      }
+
+      #app {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      canvas {
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
+
+      #loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #0a0a1a;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: #4ecdc4;
+        font-family: 'Courier New', monospace;
+        z-index: 1000;
+      }
+
+      #loading.hidden {
+        display: none;
+      }
+
+      #loading h1 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        text-shadow: 0 0 10px #4ecdc4;
+      }
+
+      .pixel-spinner {
+        width: 32px;
+        height: 32px;
+        background: #4ecdc4;
+        animation: pulse 0.5s ease-in-out infinite alternate;
+      }
+
+      @keyframes pulse {
+        from {
+          opacity: 0.3;
+          transform: scale(0.8);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading">
+      <h1>NEON RIVER</h1>
+      <div class="pixel-spinner"></div>
+    </div>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
