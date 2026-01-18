@@ -17,8 +17,6 @@ export const PAUSE_BUTTON = {
 
 export class HUD {
   render(ctx: CanvasRenderingContext2D, caught: number, missed: number): void {
-    // Render pause button first (top-left)
-    this.renderPauseButton(ctx);
     const hudX = 30;
     const hudY = GAME_HEIGHT - 130; // Bottom area, on bridge
     const hudWidth = 180;
@@ -72,9 +70,13 @@ export class HUD {
   }
 
   /**
-   * Render subtle pause button in top-left
+   * Render pause/play button in top-left
+   * @param showPlay - If true, shows play icon; otherwise shows pause icon
    */
-  private renderPauseButton(ctx: CanvasRenderingContext2D): void {
+  renderPauseButton(
+    ctx: CanvasRenderingContext2D,
+    showPlay: boolean = false
+  ): void {
     const { x, y, size } = PAUSE_BUTTON;
 
     // Subtle circular background
@@ -90,27 +92,39 @@ export class HUD {
     ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Pause icon (two vertical bars)
-    ctx.fillStyle = 'rgba(150, 180, 170, 0.7)';
-    const barWidth = 5;
-    const barHeight = 14;
-    const gap = 4;
     const centerX = x + size / 2;
     const centerY = y + size / 2;
 
-    // Left bar
-    ctx.fillRect(
-      centerX - gap / 2 - barWidth,
-      centerY - barHeight / 2,
-      barWidth,
-      barHeight
-    );
-    // Right bar
-    ctx.fillRect(
-      centerX + gap / 2,
-      centerY - barHeight / 2,
-      barWidth,
-      barHeight
-    );
+    if (showPlay) {
+      // Play icon (triangle pointing right)
+      ctx.fillStyle = 'rgba(150, 180, 170, 0.7)';
+      ctx.beginPath();
+      ctx.moveTo(centerX - 5, centerY - 8);
+      ctx.lineTo(centerX - 5, centerY + 8);
+      ctx.lineTo(centerX + 8, centerY);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // Pause icon (two vertical bars)
+      ctx.fillStyle = 'rgba(150, 180, 170, 0.7)';
+      const barWidth = 5;
+      const barHeight = 14;
+      const gap = 4;
+
+      // Left bar
+      ctx.fillRect(
+        centerX - gap / 2 - barWidth,
+        centerY - barHeight / 2,
+        barWidth,
+        barHeight
+      );
+      // Right bar
+      ctx.fillRect(
+        centerX + gap / 2,
+        centerY - barHeight / 2,
+        barWidth,
+        barHeight
+      );
+    }
   }
 }

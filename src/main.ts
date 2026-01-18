@@ -24,6 +24,8 @@ import { TitleScreen } from './ui/TitleScreen';
 import { PauseOverlay } from './ui/PauseOverlay';
 import { GameOverScreen } from './ui/GameOverScreen';
 import { WinScreen } from './ui/WinScreen';
+import { MuteButton } from './ui/MuteButton';
+import { audioManager } from './audio/AudioManager';
 
 type GameState = 'title' | 'playing' | 'paused' | 'gameover' | 'win';
 
@@ -85,6 +87,7 @@ function init(): void {
   const pauseOverlay = new PauseOverlay();
   const gameOverScreen = new GameOverScreen();
   const winScreen = new WinScreen();
+  const muteButton = new MuteButton();
 
   // Game state
   let gameState: GameState = 'title';
@@ -185,14 +188,30 @@ function init(): void {
       canvasY = coords.y;
     }
 
-    // Check for pause button tap during gameplay
+    // Check for mute button tap (available in all states except title)
     if (
-      gameState === 'playing' &&
+      gameState !== 'title' &&
+      canvasX !== undefined &&
+      canvasY !== undefined
+    ) {
+      if (muteButton.isClicked(canvasX, canvasY)) {
+        muteButton.handleClick();
+        return;
+      }
+    }
+
+    // Check for pause/play button tap during gameplay or pause
+    if (
+      (gameState === 'playing' || gameState === 'paused') &&
       canvasX !== undefined &&
       canvasY !== undefined
     ) {
       if (isInsidePauseButton(canvasX, canvasY)) {
-        pauseGame();
+        if (gameState === 'playing') {
+          pauseGame();
+        } else {
+          resumeGame();
+        }
         return;
       }
     }
@@ -319,6 +338,7 @@ function init(): void {
             caughtWeight += fish.weight;
             spawner.removeFish(fish);
             net.triggerCatch();
+            audioManager.play('catch');
           }
         }
 
@@ -419,6 +439,12 @@ function init(): void {
       case 'win':
         winScreen.render(ctx);
         break;
+    }
+
+    // Render pause/mute buttons on top of overlays (during gameplay states)
+    if (gameState === 'playing' || gameState === 'paused') {
+      hud.renderPauseButton(ctx, gameState === 'paused'); // Show play icon when paused
+      muteButton.render(ctx);
     }
   }
 
