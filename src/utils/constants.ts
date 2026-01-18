@@ -36,22 +36,36 @@ export const SPEEDS = {
 // River path control points (cubic bezier for river centerline)
 // Based on background image river flow
 export const RIVER_PATH = {
-  start: { x: GAME_WIDTH * 0.52, y: GAME_HEIGHT * 0.18 }, // Spawn point between hills
-  cp1: { x: GAME_WIDTH * 0.6, y: GAME_HEIGHT * 0.32 }, // Curves right
-  cp2: { x: GAME_WIDTH * 0.4, y: GAME_HEIGHT * 0.55 }, // Curves back left
-  end: { x: GAME_WIDTH * 0.5, y: GAME_HEIGHT * 0.78 }, // Catch zone before bridge
+  // Pre-spawn point off-screen right (fish start here but aren't visible)
+  preSpawn: { x: GAME_WIDTH * 0.85, y: GAME_HEIGHT * 0.12 },
+
+  // Visible spawn point (where fish first appear on screen)
+  start: { x: GAME_WIDTH * 0.58, y: GAME_HEIGHT * 0.2 },
+
+  // Control points for the S-curve
+  cp1: { x: GAME_WIDTH * 0.62, y: GAME_HEIGHT * 0.3 }, // Curves right
+  cp2: { x: GAME_WIDTH * 0.38, y: GAME_HEIGHT * 0.55 }, // Curves back left
+
+  // Catch zone
+  end: { x: GAME_WIDTH * 0.5, y: GAME_HEIGHT * 0.76 },
 } as const;
+
+// Fish spawn at t=-0.15 (before visible path) and enter view around t=0
+export const SPAWN_PATH_T = -0.15;
 
 // River width at different points (narrow at top, wide at bottom)
 export const RIVER_WIDTH_START = GAME_WIDTH * 0.1; // ~77px at spawn
 export const RIVER_WIDTH_END = GAME_WIDTH * 0.45; // ~346px at catch zone
 
-// Net settings
-export const NET_WIDTH = 80;
-export const NET_HEIGHT = 40;
-export const NET_Y = GAME_HEIGHT * 0.75; // Fixed Y position above bridge
+// Net settings - larger for easier catching
+export const NET_WIDTH = 100;
+export const NET_HEIGHT = 50;
+export const NET_Y = GAME_HEIGHT * 0.72; // Fixed Y position in water area
 export const NET_MIN_X = GAME_WIDTH * 0.18;
 export const NET_MAX_X = GAME_WIDTH * 0.82;
+
+// Fish sprite scale (40% larger base size, grows as approaches)
+export const FISH_BASE_SCALE = 1.4;
 
 // Play area bounds
 export const BOUNDS = {

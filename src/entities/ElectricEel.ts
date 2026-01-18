@@ -6,12 +6,10 @@
  */
 
 import type { HazardEntity, BoundingBox } from '../utils/types';
-import { SPEEDS } from '../utils/constants';
+import { SPEEDS, FISH_BASE_SCALE } from '../utils/constants';
 import { getRiverPoint, getRiverWidth } from '../utils/riverPath';
 import { ELECTRIC_EEL } from '../assets/sprites';
 import { SpriteRenderer } from '../renderer/SpriteRenderer';
-
-const SPRITE_SCALE = 2;
 
 // S-curve slither parameters (overlaid on river path)
 const SLITHER_AMPLITUDE = 0.3;
@@ -27,6 +25,8 @@ export class ElectricEel implements HazardEntity {
 
   private renderer: SpriteRenderer;
   private speed: number = SPEEDS.ELECTRIC_EEL;
+  private baseWidth: number;
+  private baseHeight: number;
 
   // River path tracking
   private pathT: number;
@@ -44,13 +44,29 @@ export class ElectricEel implements HazardEntity {
     this.pathT = pathT;
     this.baseOffset = pathOffset;
 
+    // Store base dimensions for scaling
+    this.baseWidth = dims.width;
+    this.baseHeight = dims.height;
+
     // Set initial position from path parameters
     const point = getRiverPoint(pathT);
     this.x = point.x;
     this.y = point.y;
 
-    this.width = dims.width * SPRITE_SCALE;
-    this.height = dims.height * SPRITE_SCALE;
+    // Initial size (will be updated based on pathT)
+    const scale = this.getScale();
+    this.width = this.baseWidth * scale;
+    this.height = this.baseHeight * scale;
+  }
+
+  /**
+   * Get current scale based on path position (perspective effect)
+   */
+  private getScale(): number {
+    // Normalize pathT to 0-1 range for scaling (clamp negative values)
+    const normalizedT = Math.max(0, this.pathT);
+    // Scale from 0.8x at spawn to 1.1x at catch zone
+    return FISH_BASE_SCALE * (0.8 + normalizedT * 0.3);
   }
 
   /**
@@ -75,17 +91,23 @@ export class ElectricEel implements HazardEntity {
     this.x = point.x + totalOffset * width * 0.4;
     this.y = point.y;
 
+    // Update size based on path position (perspective)
+    const scale = this.getScale();
+    this.width = this.baseWidth * scale;
+    this.height = this.baseHeight * scale;
+
     this.renderer.update(delta);
   }
 
   /**
-   * Render the eel
+   * Render the eel with dynamic scaling
    */
   render(ctx: CanvasRenderingContext2D): void {
+    const scale = this.getScale();
     this.renderer.draw(ctx, {
       x: this.x,
       y: this.y,
-      scale: SPRITE_SCALE,
+      scale: scale,
     });
   }
 

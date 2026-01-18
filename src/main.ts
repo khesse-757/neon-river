@@ -17,6 +17,7 @@ import { Net } from './entities/Net';
 import { Spawner } from './game/Spawner';
 import { checkCollision } from './game/Collision';
 import { BackgroundImage } from './scene/BackgroundImage';
+import { HUD } from './ui/HUD';
 
 type GameState = 'playing' | 'win' | 'lose';
 
@@ -69,6 +70,7 @@ function init(): void {
   const background = new BackgroundImage();
   const net = new Net();
   const spawner = new Spawner();
+  const hud = new HUD();
 
   // Game state
   let gameState: GameState = 'playing';
@@ -143,6 +145,7 @@ function init(): void {
       background,
       net,
       spawner,
+      hud,
       caughtWeight,
       timeElapsed,
       wasShocked
@@ -160,6 +163,7 @@ function render(
   background: BackgroundImage,
   net: Net,
   spawner: Spawner,
+  hud: HUD,
   caughtWeight: number,
   timeElapsed: number,
   wasShocked: boolean
@@ -170,20 +174,11 @@ function render(
   // 2. Draw fish and eels (they swim in the water)
   spawner.render(ctx);
 
-  // 3. Draw net
+  // 3. Draw net (with pole)
   net.render(ctx);
 
-  // 4. Draw HUD (scaled for larger canvas)
-  ctx.font = '24px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#4ecdc4';
-  ctx.fillText(`Caught: ${caughtWeight}/${WIN_WEIGHT} lbs`, 20, 50);
-  ctx.fillStyle = '#ff6b6b';
-  ctx.fillText(
-    `Missed: ${spawner.getMissedWeight()}/${MAX_MISSED_WEIGHT} lbs`,
-    20,
-    85
-  );
+  // 4. Draw HUD (stone tablet style at bottom-left)
+  hud.render(ctx, caughtWeight, spawner.getMissedWeight());
 
   // Draw win/lose overlay
   if (gameState === 'win') {

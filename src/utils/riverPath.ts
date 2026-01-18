@@ -2,15 +2,35 @@
  * RiverPath - Utility functions for river path calculations
  *
  * The river path is defined as a cubic bezier curve.
- * t=0 is the spawn point (top), t=1 is the catch zone (bottom).
+ * t < 0: Pre-spawn area (interpolate from preSpawn to start)
+ * t = 0: Visible spawn point (top of river in view)
+ * t = 1: Catch zone (bottom)
  */
 
-import { RIVER_PATH, RIVER_WIDTH_START, RIVER_WIDTH_END } from './constants';
+import {
+  RIVER_PATH,
+  RIVER_WIDTH_START,
+  RIVER_WIDTH_END,
+  SPAWN_PATH_T,
+} from './constants';
 
 /**
- * Get a point on the river centerline at parameter t (0-1)
+ * Get a point on the river centerline at parameter t
+ * t < 0: Linear interpolation from preSpawn to start
+ * t >= 0: Cubic bezier curve from start to end
  */
 export function getRiverPoint(t: number): { x: number; y: number } {
+  // Handle pre-spawn region (t < 0)
+  if (t < 0) {
+    // Normalize t from [SPAWN_PATH_T, 0] to [0, 1]
+    const preT = t / SPAWN_PATH_T; // 1 at spawn, 0 at start
+    return {
+      x: RIVER_PATH.preSpawn.x * preT + RIVER_PATH.start.x * (1 - preT),
+      y: RIVER_PATH.preSpawn.y * preT + RIVER_PATH.start.y * (1 - preT),
+    };
+  }
+
+  // Standard bezier for t >= 0
   const mt = 1 - t;
   const mt2 = mt * mt;
   const mt3 = mt2 * mt;
@@ -33,14 +53,19 @@ export function getRiverPoint(t: number): { x: number; y: number } {
 
 /**
  * Get river width at parameter t (eased for natural perspective widening)
+ * For t < 0, use the start width
  */
 export function getRiverWidth(t: number): number {
+  if (t < 0) {
+    return RIVER_WIDTH_START;
+  }
   const eased = t * t;
   return RIVER_WIDTH_START + (RIVER_WIDTH_END - RIVER_WIDTH_START) * eased;
 }
 
 /**
  * Get spawn position for new fish/eel
+ * Fish spawn at SPAWN_PATH_T (before visible area) and swim into view
  */
 export function getSpawnPosition(): {
   x: number;
@@ -48,7 +73,7 @@ export function getSpawnPosition(): {
   pathT: number;
   pathOffset: number;
 } {
-  const pathT = 0;
+  const pathT = SPAWN_PATH_T;
   const point = getRiverPoint(pathT);
   const width = getRiverWidth(pathT);
 

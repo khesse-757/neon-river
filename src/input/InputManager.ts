@@ -27,10 +27,10 @@ export class InputManager {
     // Attach listeners
     canvas.addEventListener('mousemove', this.handleMouseMove);
     canvas.addEventListener('touchstart', this.handleTouchStart, {
-      passive: true,
+      passive: false, // Need to call preventDefault
     });
     canvas.addEventListener('touchmove', this.handleTouchMove, {
-      passive: true,
+      passive: false, // Need to call preventDefault to stop scrolling
     });
     canvas.addEventListener('mouseleave', this.handleMouseLeave);
   }
@@ -41,6 +41,7 @@ export class InputManager {
   }
 
   private onTouchStart(e: TouchEvent): void {
+    e.preventDefault(); // Prevent scrolling
     this.active = true;
     const touch = e.touches[0];
     if (touch) {
@@ -49,6 +50,7 @@ export class InputManager {
   }
 
   private onTouchMove(e: TouchEvent): void {
+    e.preventDefault(); // Prevent scrolling/rubber-banding
     const touch = e.touches[0];
     if (touch) {
       this.updatePosition(touch.clientX);
