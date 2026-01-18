@@ -34,7 +34,11 @@ export class GoldenKoi implements FishEntity {
   private driftSpeed: number;
   private wobblePhase: number;
 
-  constructor(spawnLane: number = 0, moveDirection: number = 1) {
+  constructor(
+    spawnLane: number = 0,
+    moveDirection: number = 1,
+    speedMult: number = 1
+  ) {
     this.renderer = new SpriteRenderer(GOLDEN_KOI);
     const dims = this.renderer.getDimensions();
 
@@ -45,8 +49,11 @@ export class GoldenKoi implements FishEntity {
     this.lateralOffset = spawnLane;
     this.moveDirection = moveDirection;
 
+    // Apply speed multiplier for progressive difficulty
+    this.speed = SPEEDS.GOLDEN_KOI * speedMult;
+
     // Golden Koi: slightly faster drift, still smooth
-    this.driftSpeed = 0.18 + Math.random() * 0.1; // 0.18-0.28
+    this.driftSpeed = (0.18 + Math.random() * 0.1) * speedMult; // 0.18-0.28
 
     // Small wobble for natural feel
     this.wobblePhase = Math.random() * Math.PI * 2;

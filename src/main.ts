@@ -350,6 +350,7 @@ function init(): void {
         for (const fish of spawner.getEntities()) {
           if (checkCollision(netBox, fish.getBoundingBox())) {
             caughtWeight += fish.weight;
+            spawner.setCaughtWeight(caughtWeight);
             spawner.removeFish(fish);
             net.triggerCatch();
             audioManager.play('catch');

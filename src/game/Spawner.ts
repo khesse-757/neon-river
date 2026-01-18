@@ -29,6 +29,50 @@ export class Spawner {
   private fishInCurrentWave: number = 0;
   private fishPerWave: number = 4; // Fish per sweep before reversing
 
+  // Progressive difficulty (tiered based on caught weight)
+  // speedMult = fish swim faster, spawnMult = fish spawn more frequently
+  private readonly DIFFICULTY_TIERS = [
+    { threshold: 75, speedMult: 1.1, spawnMult: 1.15 },
+    { threshold: 125, speedMult: 1.2, spawnMult: 1.3 },
+    { threshold: 150, speedMult: 1.3, spawnMult: 1.45 },
+    { threshold: 175, speedMult: 1.4, spawnMult: 1.6 },
+  ];
+
+  // Endgame eel boost
+  private caughtWeight: number = 0;
+  private readonly EEL_BOOST_THRESHOLD = 75; // Start boosting eels at first speed tier
+  private readonly EEL_BOOST_AMOUNT = 0.15; // 15% more eels
+
+  // Eel fairness: minimum gap between eels so player can always navigate
+  private eelCooldown: number = 0;
+  private readonly EEL_MIN_GAP = 1.8; // Seconds between eel spawns (ensures escape window)
+
+  /**
+   * Get current speed multiplier based on weight tiers
+   */
+  private getSpeedMultiplier(): number {
+    let mult = 1.0;
+    for (const tier of this.DIFFICULTY_TIERS) {
+      if (this.caughtWeight >= tier.threshold) {
+        mult = tier.speedMult;
+      }
+    }
+    return mult;
+  }
+
+  /**
+   * Get current spawn rate multiplier based on weight tiers
+   */
+  private getSpawnMultiplier(): number {
+    let mult = 1.0;
+    for (const tier of this.DIFFICULTY_TIERS) {
+      if (this.caughtWeight >= tier.threshold) {
+        mult = tier.spawnMult;
+      }
+    }
+    return mult;
+  }
+
   /**
    * Update spawner - spawn fish, update existing fish, remove off-screen
    */
@@ -36,12 +80,20 @@ export class Spawner {
     // Increment spawn timer
     this.spawnTimer += delta;
 
+    // Decrement eel cooldown
+    if (this.eelCooldown > 0) {
+      this.eelCooldown -= delta;
+    }
+
+    // Calculate effective spawn interval (reduced by spawn multiplier)
+    const effectiveInterval = this.spawnInterval / this.getSpawnMultiplier();
+
     // Spawn fish when timer exceeds interval
-    if (this.spawnTimer >= this.spawnInterval) {
+    if (this.spawnTimer >= effectiveInterval) {
       this.spawnEntity();
       this.spawnTimer = 0;
 
-      // Decrease interval (speed up spawning)
+      // Decrease base interval (speed up spawning over time)
       this.spawnInterval = Math.max(
         MIN_SPAWN_INTERVAL,
         this.spawnInterval * SPAWN_ACCELERATION
@@ -95,25 +147,46 @@ export class Spawner {
   }
 
   /**
+   * Update caught weight for endgame eel boost
+   */
+  setCaughtWeight(weight: number): void {
+    this.caughtWeight = weight;
+  }
+
+  /**
    * Spawn a new entity at the river source with wave coordination
    */
   private spawnEntity(): void {
     // Get coordinated spawn lane and movement direction
     const spawnLane = this.getNextSpawnLane();
     const moveDirection = this.waveDirection;
+    const speedMult = this.getSpeedMultiplier();
 
-    // Weighted random selection
+    // Calculate spawn weights with endgame eel boost
+    let eelChance = SPAWN_WEIGHTS.ELECTRIC_EEL;
+    if (this.caughtWeight >= this.EEL_BOOST_THRESHOLD) {
+      eelChance += this.EEL_BOOST_AMOUNT;
+    }
+
+    // Weighted random selection (eel checked first for boost)
     const roll = Math.random();
-    const bluegillThreshold = SPAWN_WEIGHTS.BLUEGILL;
-    const koiThreshold = bluegillThreshold + SPAWN_WEIGHTS.GOLDEN_KOI;
+    const eelThreshold = eelChance;
+    const koiThreshold = eelChance + SPAWN_WEIGHTS.GOLDEN_KOI;
 
-    if (roll < bluegillThreshold) {
-      this.entities.push(new Bluegill(spawnLane, moveDirection));
+    if (roll < eelThreshold) {
+      // Eel rolled - check cooldown for fairness
+      if (this.eelCooldown <= 0) {
+        // Spawn eel and start cooldown
+        this.eels.push(new ElectricEel(spawnLane, moveDirection, speedMult));
+        this.eelCooldown = this.EEL_MIN_GAP;
+      } else {
+        // On cooldown - spawn bluegill instead (keeps game fair)
+        this.entities.push(new Bluegill(spawnLane, moveDirection, speedMult));
+      }
     } else if (roll < koiThreshold) {
-      this.entities.push(new GoldenKoi(spawnLane, moveDirection));
+      this.entities.push(new GoldenKoi(spawnLane, moveDirection, speedMult));
     } else {
-      // Electric eel - add to separate hazards array
-      this.eels.push(new ElectricEel(spawnLane, moveDirection));
+      this.entities.push(new Bluegill(spawnLane, moveDirection, speedMult));
     }
 
     // Advance wave for next spawn
@@ -207,6 +280,8 @@ export class Spawner {
     this.spawnInterval = INITIAL_SPAWN_INTERVAL;
     this.spawnTimer = 0;
     this.missedWeight = 0;
+    this.caughtWeight = 0;
+    this.eelCooldown = 0;
 
     // Reset wave state
     this.waveDirection = 1;

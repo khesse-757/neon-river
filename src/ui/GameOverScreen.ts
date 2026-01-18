@@ -5,17 +5,31 @@
  */
 
 import { GAME_WIDTH, GAME_HEIGHT, WIN_WEIGHT } from '../utils/constants';
+import { ELECTRIC_EEL } from '../assets/sprites';
+import { SpriteRenderer } from '../renderer/SpriteRenderer';
 
 // Button dimensions
 const BTN_WIDTH = 200;
 const BTN_HEIGHT = 48;
 const BTN_RADIUS = 6;
 
+// Eel display settings
+const EEL_SCALE = 5;
+
 export class GameOverScreen {
   private time: number = 0;
   private causeOfDeath: 'eel' | 'missed' = 'missed';
   private finalCaught: number = 0;
   private finalMissed: number = 0;
+
+  // Animated eel display
+  private eelRenderer: SpriteRenderer;
+  private sparkPhase: number = 0;
+  private sparkTimer: number = 0;
+
+  constructor() {
+    this.eelRenderer = new SpriteRenderer(ELECTRIC_EEL);
+  }
 
   show(cause: 'eel' | 'missed', caught: number, missed: number): void {
     this.time = 0;
@@ -26,6 +40,14 @@ export class GameOverScreen {
 
   update(delta: number): void {
     this.time += delta;
+
+    // Animate eel sprite and sparks
+    this.eelRenderer.update(delta);
+    this.sparkTimer += delta;
+    if (this.sparkTimer >= 0.15) {
+      this.sparkTimer = 0;
+      this.sparkPhase = (this.sparkPhase + 1) % 4;
+    }
   }
 
   render(ctx: CanvasRenderingContext2D): void {
@@ -87,6 +109,30 @@ export class GameOverScreen {
     const progress = Math.floor((this.finalCaught / WIN_WEIGHT) * 100);
     ctx.fillStyle = `rgba(180, 180, 180, ${textAlpha})`;
     ctx.fillText(`${progress}%`, boxX + boxW - 20, boxY + 95);
+
+    // === ANIMATED EEL (only for eel death) ===
+    if (this.causeOfDeath === 'eel' && this.time > 0.5) {
+      const eelAlpha = Math.min(1, (this.time - 0.5) * 2);
+      const retryBtnY = GAME_HEIGHT * 0.72;
+      const eelHeight = ELECTRIC_EEL.height * EEL_SCALE;
+      // Center eel between stats box bottom and retry button top
+      const gapStart = boxY + boxH;
+      const gapEnd = retryBtnY;
+      const eelY = gapStart + (gapEnd - gapStart - eelHeight) / 2;
+      const eelX = GAME_WIDTH / 2 - (ELECTRIC_EEL.width * EEL_SCALE) / 2;
+
+      // Draw sparks behind the eel
+      this.renderEelSparks(ctx, eelX, eelY, eelAlpha);
+
+      // Draw the eel sprite
+      ctx.globalAlpha = eelAlpha;
+      this.eelRenderer.draw(ctx, {
+        x: eelX,
+        y: eelY,
+        scale: EEL_SCALE,
+      });
+      ctx.globalAlpha = 1;
+    }
 
     // Button positions
     const retryBtnY = GAME_HEIGHT * 0.72;
@@ -166,5 +212,74 @@ export class GameOverScreen {
       canvasY >= btnY &&
       canvasY <= btnY + BTN_HEIGHT
     );
+  }
+
+  /**
+   * Render electric sparks around the display eel
+   */
+  private renderEelSparks(
+    ctx: CanvasRenderingContext2D,
+    eelX: number,
+    eelY: number,
+    alpha: number
+  ): void {
+    const eelWidth = ELECTRIC_EEL.width * EEL_SCALE;
+    const eelHeight = ELECTRIC_EEL.height * EEL_SCALE;
+    const centerX = eelX + eelWidth / 2;
+    const centerY = eelY + eelHeight / 2;
+    const pixelSize = Math.floor(EEL_SCALE);
+
+    // Spark colors
+    const colors = ['#ffff44', '#44ffff', '#ffff88', '#88ffff'];
+
+    // Spark positions based on phase
+    const sparkSets = [
+      [
+        { ox: -eelWidth * 0.35, oy: -eelHeight * 0.5 },
+        { ox: eelWidth * 0.15, oy: eelHeight * 0.6 },
+        { ox: eelWidth * 0.4, oy: -eelHeight * 0.4 },
+      ],
+      [
+        { ox: -eelWidth * 0.15, oy: eelHeight * 0.5 },
+        { ox: eelWidth * 0.35, oy: -eelHeight * 0.6 },
+        { ox: -eelWidth * 0.4, oy: eelHeight * 0.3 },
+      ],
+      [
+        { ox: eelWidth * 0.0, oy: -eelHeight * 0.55 },
+        { ox: eelWidth * 0.45, oy: eelHeight * 0.4 },
+        { ox: -eelWidth * 0.3, oy: -eelHeight * 0.3 },
+      ],
+      [
+        { ox: -eelWidth * 0.25, oy: eelHeight * 0.4 },
+        { ox: eelWidth * 0.25, oy: -eelHeight * 0.5 },
+        { ox: eelWidth * 0.5, oy: eelHeight * 0.2 },
+      ],
+    ];
+
+    const sparks = sparkSets[this.sparkPhase];
+    if (!sparks) return;
+
+    ctx.globalAlpha = alpha;
+
+    for (let i = 0; i < sparks.length; i++) {
+      const spark = sparks[i];
+      if (!spark) continue;
+
+      const sx = centerX + spark.ox;
+      const sy = centerY + spark.oy;
+      const color = colors[(i + this.sparkPhase) % colors.length] ?? '#ffff44';
+
+      ctx.fillStyle = color;
+
+      // Draw zigzag lightning bolt
+      ctx.fillRect(sx, sy, pixelSize, pixelSize);
+      ctx.fillRect(sx + pixelSize, sy + pixelSize, pixelSize, pixelSize);
+      ctx.fillRect(sx, sy + pixelSize * 2, pixelSize, pixelSize);
+      if (this.sparkPhase % 2 === 0) {
+        ctx.fillRect(sx + pixelSize, sy + pixelSize * 3, pixelSize, pixelSize);
+      }
+    }
+
+    ctx.globalAlpha = 1;
   }
 }
