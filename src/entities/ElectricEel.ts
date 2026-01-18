@@ -2,7 +2,7 @@
  * Electric Eel Hazard Entity
  *
  * Deadly hazard - instant game over on contact.
- * Follows river path with additional S-curve slither motion.
+ * Very slow, wide sweep - menacing and deliberate.
  */
 
 import type { HazardEntity, BoundingBox } from '../utils/types';
@@ -10,10 +10,6 @@ import { SPEEDS, FISH_BASE_SCALE } from '../utils/constants';
 import { getRiverPoint, getRiverWidth } from '../utils/riverPath';
 import { ELECTRIC_EEL } from '../assets/sprites';
 import { SpriteRenderer } from '../renderer/SpriteRenderer';
-
-// S-curve slither parameters (overlaid on river path)
-const SLITHER_AMPLITUDE = 0.3;
-const SLITHER_FREQUENCY = 3;
 
 export class ElectricEel implements HazardEntity {
   x: number;
@@ -30,27 +26,38 @@ export class ElectricEel implements HazardEntity {
 
   // River path tracking
   private pathT: number;
-  private baseOffset: number;
 
-  constructor(
-    _x: number,
-    _y: number,
-    pathT: number = 0,
-    pathOffset: number = 0
-  ) {
+  // Coordinated wave movement
+  private lateralOffset: number;
+  private moveDirection: number; // 1 = drifting right, -1 = drifting left
+  private driftSpeed: number;
+  private wobblePhase: number;
+
+  constructor(spawnLane: number = 0, moveDirection: number = 1) {
     this.renderer = new SpriteRenderer(ELECTRIC_EEL);
     const dims = this.renderer.getDimensions();
 
-    this.pathT = pathT;
-    this.baseOffset = pathOffset;
+    // Start at river source
+    this.pathT = 0;
+
+    // Coordinated movement from spawner
+    this.lateralOffset = spawnLane;
+    this.moveDirection = moveDirection;
+
+    // Electric Eel: very slow, wide sweep (menacing)
+    this.driftSpeed = 0.08 + Math.random() * 0.05; // 0.08-0.13
+
+    // Slow undulation for natural feel
+    this.wobblePhase = Math.random() * Math.PI * 2;
 
     // Store base dimensions for scaling
     this.baseWidth = dims.width;
     this.baseHeight = dims.height;
 
-    // Set initial position from path parameters
-    const point = getRiverPoint(pathT);
-    this.x = point.x;
+    // Set initial position from path
+    const point = getRiverPoint(this.pathT);
+    const width = getRiverWidth(this.pathT);
+    this.x = point.x + this.lateralOffset * width;
     this.y = point.y;
 
     // Initial size (will be updated based on pathT)
@@ -70,25 +77,33 @@ export class ElectricEel implements HazardEntity {
   }
 
   /**
-   * Update eel position - follows river with S-curve slither
+   * Update eel position - follows river with slow, menacing sweep
    */
   update(delta: number): void {
-    // Move along the river path (speed is in path units per second)
+    // Move down the river (slowest entity)
     this.pathT += this.speed * delta;
+
+    // Drift sideways in assigned direction (very slow)
+    this.lateralOffset += this.moveDirection * this.driftSpeed * delta;
+
+    // Bounce back at river bounds
+    if (this.lateralOffset > 0.4) {
+      this.lateralOffset = 0.4;
+      this.moveDirection = -1;
+    } else if (this.lateralOffset < -0.4) {
+      this.lateralOffset = -0.4;
+      this.moveDirection = 1;
+    }
+
+    // Slow undulation (menacing)
+    this.wobblePhase += delta * 1.2;
+    const wobble = Math.sin(this.wobblePhase) * 0.02;
 
     // Calculate position from path
     const point = getRiverPoint(this.pathT);
     const width = getRiverWidth(this.pathT);
 
-    // S-curve slither: sinusoidal offset based on position along path
-    const slitherPhase = this.pathT * SLITHER_FREQUENCY * Math.PI * 2;
-    const slitherOffset = Math.sin(slitherPhase) * SLITHER_AMPLITUDE;
-
-    // Combine base offset with slither
-    const totalOffset = this.baseOffset + slitherOffset;
-
-    // Update position
-    this.x = point.x + totalOffset * width * 0.4;
+    this.x = point.x + (this.lateralOffset + wobble) * width;
     this.y = point.y;
 
     // Update size based on path position (perspective)

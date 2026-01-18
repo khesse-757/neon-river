@@ -37,17 +37,17 @@ export const SPEEDS = {
 // Based on background image river flow
 export const RIVER_PATH = {
   // Pre-spawn point off-screen right (fish start here but aren't visible)
-  preSpawn: { x: GAME_WIDTH * 0.85, y: GAME_HEIGHT * 0.12 },
+  preSpawn: { x: GAME_WIDTH * 0.85, y: GAME_HEIGHT * 0.18 },
 
-  // Visible spawn point (where fish first appear on screen)
-  start: { x: GAME_WIDTH * 0.58, y: GAME_HEIGHT * 0.2 },
+  // Visible spawn point (where fish first appear on screen) - lowered into water
+  start: { x: GAME_WIDTH * 0.58, y: GAME_HEIGHT * 0.26 },
 
   // Control points for the S-curve
-  cp1: { x: GAME_WIDTH * 0.62, y: GAME_HEIGHT * 0.3 }, // Curves right
+  cp1: { x: GAME_WIDTH * 0.62, y: GAME_HEIGHT * 0.33 }, // Curves right
   cp2: { x: GAME_WIDTH * 0.38, y: GAME_HEIGHT * 0.55 }, // Curves back left
 
   // Catch zone
-  end: { x: GAME_WIDTH * 0.5, y: GAME_HEIGHT * 0.76 },
+  end: { x: GAME_WIDTH * 0.5, y: GAME_HEIGHT * 0.74 },
 } as const;
 
 // Fish spawn at t=-0.15 (before visible path) and enter view around t=0
@@ -57,20 +57,20 @@ export const SPAWN_PATH_T = -0.15;
 export const RIVER_WIDTH_START = GAME_WIDTH * 0.1; // ~77px at spawn
 export const RIVER_WIDTH_END = GAME_WIDTH * 0.45; // ~346px at catch zone
 
-// Net settings - larger for easier catching
-export const NET_WIDTH = 100;
-export const NET_HEIGHT = 50;
-export const NET_Y = GAME_HEIGHT * 0.72; // Fixed Y position in water area
+// Net settings (reduced 10% for balance)
+export const NET_WIDTH = 90;
+export const NET_HEIGHT = 45;
+export const NET_Y = GAME_HEIGHT * 0.7; // Fixed Y position in water area
 export const NET_MIN_X = GAME_WIDTH * 0.18;
 export const NET_MAX_X = GAME_WIDTH * 0.82;
 
-// Fish sprite scale (40% larger base size, grows as approaches)
-export const FISH_BASE_SCALE = 1.4;
+// Fish sprite scale (2x base size, grows as approaches)
+export const FISH_BASE_SCALE = 2.0;
 
 // Play area bounds
 export const BOUNDS = {
   LEFT: GAME_WIDTH * 0.15,
   RIGHT: GAME_WIDTH * 0.85,
-  SPAWN_Y: GAME_HEIGHT * 0.18,
-  DESPAWN_Y: GAME_HEIGHT * 0.85,
+  SPAWN_Y: GAME_HEIGHT * 0.21,
+  DESPAWN_Y: GAME_HEIGHT * 0.73, // Just past the net, before bridge
 } as const;

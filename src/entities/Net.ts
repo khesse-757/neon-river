@@ -4,6 +4,8 @@
  * Player-controlled net for catching fish.
  * Moves horizontally based on input, fixed Y position.
  * Features a pole connecting to the fisherman's hand position.
+ *
+ * Rendering is split into pole (behind fisherman) and net head (in front).
  */
 
 import type { Entity, BoundingBox } from '../utils/types';
@@ -25,6 +27,10 @@ export class Net implements Entity {
 
   private targetX: number;
 
+  // Wobble animation for catch effect
+  private meshWobble: number = 0;
+  private wobbleDecay: number = 0.92;
+
   constructor(initialX: number = GAME_WIDTH / 2 - NET_WIDTH / 2) {
     this.x = initialX;
     this.y = NET_Y;
@@ -32,10 +38,16 @@ export class Net implements Entity {
   }
 
   /**
+   * Trigger catch animation - mesh wobbles
+   */
+  triggerCatch(): void {
+    this.meshWobble = 1.0;
+  }
+
+  /**
    * Set the net's horizontal position (with smoothing)
    */
   setX(x: number): void {
-    // Calculate clamped target
     const minX = NET_MIN_X;
     const maxX = NET_MAX_X - this.width;
     this.targetX = Math.max(minX, Math.min(maxX, x));
@@ -54,39 +66,58 @@ export class Net implements Entity {
     const maxX = NET_MAX_X - this.width;
     this.x = Math.max(minX, Math.min(maxX, this.x));
 
-    // Suppress unused delta warning
+    // Decay the wobble over time
+    if (this.meshWobble > 0.01) {
+      this.meshWobble *= this.wobbleDecay;
+    } else {
+      this.meshWobble = 0;
+    }
+
     void delta;
   }
 
   /**
-   * Render the net with pole to the canvas
+   * Render the pole - call BEFORE fisherman sprite
    */
-  render(ctx: CanvasRenderingContext2D): void {
-    // Hand/grip position (fixed point on the right side, like fisherman holding it)
-    const gripX = GAME_WIDTH * 0.85;
-    const gripY = GAME_HEIGHT * 0.88;
+  renderPole(ctx: CanvasRenderingContext2D): void {
+    const gripX = GAME_WIDTH * 0.72;
+    const gripY = GAME_HEIGHT * 0.92;
 
-    // Net head position (moves with input)
     const netCenterX = this.x + this.width / 2;
-    const netCenterY = this.y + this.height / 2;
+    const netCenterY = this.y + 10;
 
-    // === POLE ===
-    ctx.strokeStyle = '#8B7355'; // Wood brown
-    ctx.lineWidth = 6;
+    // Pole shadow
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.lineWidth = 8;
     ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(gripX + 3, gripY + 3);
+    ctx.lineTo(netCenterX + 3, netCenterY + 3);
+    ctx.stroke();
 
+    // Main pole
+    ctx.strokeStyle = '#8B7355';
+    ctx.lineWidth = 6;
     ctx.beginPath();
     ctx.moveTo(gripX, gripY);
-    ctx.lineTo(netCenterX, netCenterY - 10);
+    ctx.lineTo(netCenterX, netCenterY);
     ctx.stroke();
 
     // Pole highlight
     ctx.strokeStyle = '#A08060';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(gripX - 1, gripY);
-    ctx.lineTo(netCenterX - 1, netCenterY - 10);
+    ctx.moveTo(gripX - 1, gripY - 1);
+    ctx.lineTo(netCenterX - 1, netCenterY - 1);
     ctx.stroke();
+  }
+
+  /**
+   * Render the net head (hoop + mesh) - call AFTER fisherman sprite
+   */
+  renderNetHead(ctx: CanvasRenderingContext2D): void {
+    const netCenterX = this.x + this.width / 2;
+    const time = performance.now() * 0.015;
 
     // === NET FRAME (oval hoop) ===
     ctx.strokeStyle = '#5a7a6a';
@@ -103,17 +134,19 @@ export class Net implements Entity {
     );
     ctx.stroke();
 
-    // === NET MESH ===
+    // === NET MESH with wobble ===
     ctx.strokeStyle = 'rgba(100, 180, 160, 0.6)';
     ctx.lineWidth = 1;
 
-    // Vertical lines
+    // Vertical mesh lines - wobble when catching
     for (let i = -3; i <= 3; i++) {
       const offsetX = i * (this.width / 7);
+      const wobbleOffset = this.meshWobble * Math.sin(time + i * 1.5) * 8;
+
       ctx.beginPath();
       ctx.moveTo(netCenterX + offsetX, this.y);
       ctx.quadraticCurveTo(
-        netCenterX + offsetX * 0.8,
+        netCenterX + offsetX * 0.8 + wobbleOffset,
         this.y + this.height * 0.6,
         netCenterX + offsetX * 0.3,
         this.y + this.height
@@ -121,12 +154,14 @@ export class Net implements Entity {
       ctx.stroke();
     }
 
-    // Horizontal curves
+    // Horizontal curves - also wobble
     for (let i = 1; i <= 4; i++) {
       const curveY = this.y + (this.height * i) / 5;
       const widthAtY = this.width * (1 - i * 0.15);
+      const wobbleY = this.meshWobble * Math.sin(time + i * 2) * 4;
+
       ctx.beginPath();
-      ctx.ellipse(netCenterX, curveY, widthAtY / 2, 5, 0, 0, Math.PI);
+      ctx.ellipse(netCenterX, curveY + wobbleY, widthAtY / 2, 5, 0, 0, Math.PI);
       ctx.stroke();
     }
 
@@ -147,14 +182,32 @@ export class Net implements Entity {
   }
 
   /**
+   * Render the full net (pole + head) - for backward compatibility
+   */
+  render(ctx: CanvasRenderingContext2D): void {
+    this.renderPole(ctx);
+    this.renderNetHead(ctx);
+  }
+
+  /**
    * Get bounding box for collision detection
+   * Only the front opening of the net (top 35%) is the hitbox
    */
   getBoundingBox(): BoundingBox {
     return {
       x: this.x,
       y: this.y,
       width: this.width,
-      height: this.height,
+      height: this.height * 0.35,
     };
+  }
+
+  /**
+   * Reset net to initial state
+   */
+  reset(): void {
+    this.x = GAME_WIDTH / 2 - this.width / 2;
+    this.targetX = this.x;
+    this.meshWobble = 0;
   }
 }

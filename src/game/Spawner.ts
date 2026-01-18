@@ -13,7 +13,6 @@ import {
   SPAWN_WEIGHTS,
   BOUNDS,
 } from '../utils/constants';
-import { getRiverPoint, getRiverWidth } from '../utils/riverPath';
 import { Bluegill } from '../entities/Bluegill';
 import { GoldenKoi } from '../entities/GoldenKoi';
 import { ElectricEel } from '../entities/ElectricEel';
@@ -24,6 +23,11 @@ export class Spawner {
   private spawnInterval: number = INITIAL_SPAWN_INTERVAL;
   private spawnTimer: number = 0;
   private missedWeight: number = 0;
+
+  // Wave-based spawning system
+  private waveDirection: number = 1; // 1 = sweeping right, -1 = sweeping left
+  private fishInCurrentWave: number = 0;
+  private fishPerWave: number = 4; // Fish per sweep before reversing
 
   /**
    * Update spawner - spawn fish, update existing fish, remove off-screen
@@ -60,20 +64,43 @@ export class Spawner {
   }
 
   /**
-   * Spawn a new entity at the river source
+   * Get spawn lane based on wave position
+   */
+  private getNextSpawnLane(): number {
+    const progress = this.fishInCurrentWave / this.fishPerWave;
+
+    if (this.waveDirection > 0) {
+      // Sweeping left to right: -0.35 to +0.35
+      return -0.35 + progress * 0.7;
+    } else {
+      // Sweeping right to left: +0.35 to -0.35
+      return 0.35 - progress * 0.7;
+    }
+  }
+
+  /**
+   * Advance wave state after spawning
+   */
+  private advanceWave(): void {
+    this.fishInCurrentWave++;
+
+    // When wave is complete, reverse direction
+    if (this.fishInCurrentWave >= this.fishPerWave) {
+      this.fishInCurrentWave = 0;
+      this.waveDirection *= -1;
+
+      // Slight variation in next wave size (3-5 fish)
+      this.fishPerWave = 3 + Math.floor(Math.random() * 3);
+    }
+  }
+
+  /**
+   * Spawn a new entity at the river source with wave coordination
    */
   private spawnEntity(): void {
-    // Spawn at river source (t = 0)
-    const spawnT = 0;
-    const point = getRiverPoint(spawnT);
-    const width = getRiverWidth(spawnT);
-
-    // Random lateral offset within river (-0.8 to 0.8 of half-width)
-    const pathOffset = (Math.random() - 0.5) * 1.6;
-
-    // Calculate actual spawn position
-    const x = point.x + pathOffset * width * 0.4;
-    const y = point.y;
+    // Get coordinated spawn lane and movement direction
+    const spawnLane = this.getNextSpawnLane();
+    const moveDirection = this.waveDirection;
 
     // Weighted random selection
     const roll = Math.random();
@@ -81,13 +108,16 @@ export class Spawner {
     const koiThreshold = bluegillThreshold + SPAWN_WEIGHTS.GOLDEN_KOI;
 
     if (roll < bluegillThreshold) {
-      this.entities.push(new Bluegill(x, y, spawnT, pathOffset));
+      this.entities.push(new Bluegill(spawnLane, moveDirection));
     } else if (roll < koiThreshold) {
-      this.entities.push(new GoldenKoi(x, y, spawnT, pathOffset));
+      this.entities.push(new GoldenKoi(spawnLane, moveDirection));
     } else {
       // Electric eel - add to separate hazards array
-      this.eels.push(new ElectricEel(x, y, spawnT, pathOffset));
+      this.eels.push(new ElectricEel(spawnLane, moveDirection));
     }
+
+    // Advance wave for next spawn
+    this.advanceWave();
   }
 
   /**
@@ -159,6 +189,16 @@ export class Spawner {
   }
 
   /**
+   * Remove a specific eel (when shocked)
+   */
+  removeEel(eel: HazardEntity): void {
+    const index = this.eels.indexOf(eel);
+    if (index !== -1) {
+      this.eels.splice(index, 1);
+    }
+  }
+
+  /**
    * Reset spawner to initial state
    */
   reset(): void {
@@ -167,5 +207,10 @@ export class Spawner {
     this.spawnInterval = INITIAL_SPAWN_INTERVAL;
     this.spawnTimer = 0;
     this.missedWeight = 0;
+
+    // Reset wave state
+    this.waveDirection = 1;
+    this.fishInCurrentWave = 0;
+    this.fishPerWave = 4;
   }
 }

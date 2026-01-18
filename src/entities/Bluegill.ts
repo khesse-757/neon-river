@@ -2,6 +2,7 @@
  * Bluegill Fish Entity
  *
  * Common fish worth 1 lb. Follows the river curve as it swims downstream.
+ * Gentle drift movement with subtle wobble - zen and flowing.
  */
 
 import type { FishEntity, BoundingBox } from '../utils/types';
@@ -26,30 +27,38 @@ export class Bluegill implements FishEntity {
 
   // River path tracking
   private pathT: number;
-  private pathOffset: number;
+
+  // Coordinated wave movement
+  private lateralOffset: number;
+  private moveDirection: number; // 1 = drifting right, -1 = drifting left
+  private driftSpeed: number;
   private wobblePhase: number;
 
-  constructor(
-    _x: number,
-    _y: number,
-    pathT: number = 0,
-    pathOffset: number = 0
-  ) {
+  constructor(spawnLane: number = 0, moveDirection: number = 1) {
     this.renderer = new SpriteRenderer(BLUEGILL);
     const dims = this.renderer.getDimensions();
 
-    this.pathT = pathT;
-    this.pathOffset = pathOffset;
+    // Start at river source
+    this.pathT = 0;
+
+    // Coordinated movement from spawner
+    this.lateralOffset = spawnLane;
+    this.moveDirection = moveDirection;
+
+    // Bluegill: gentle, steady drift
+    this.driftSpeed = 0.12 + Math.random() * 0.08; // 0.12-0.20
+
+    // Small wobble for natural feel
     this.wobblePhase = Math.random() * Math.PI * 2;
 
     // Store base dimensions for scaling
     this.baseWidth = dims.width;
     this.baseHeight = dims.height;
 
-    // Set initial position from path parameters
-    const point = getRiverPoint(pathT);
-    const width = getRiverWidth(pathT);
-    this.x = point.x + pathOffset * width * 0.4;
+    // Set initial position from path
+    const point = getRiverPoint(this.pathT);
+    const width = getRiverWidth(this.pathT);
+    this.x = point.x + this.lateralOffset * width;
     this.y = point.y;
 
     // Initial size (will be updated based on pathT)
@@ -62,29 +71,38 @@ export class Bluegill implements FishEntity {
    * Get current scale based on path position (perspective effect)
    */
   private getScale(): number {
-    // Normalize pathT to 0-1 range for scaling (clamp negative values)
     const normalizedT = Math.max(0, this.pathT);
-    // Scale from 0.8x at spawn to 1.1x at catch zone
     return FISH_BASE_SCALE * (0.8 + normalizedT * 0.3);
   }
 
   /**
-   * Update fish position - follows river curve
+   * Update fish position - follows river curve with gentle drift
    */
   update(delta: number): void {
-    // Move along the river path (speed is in path units per second)
+    // Move down the river
     this.pathT += this.speed * delta;
 
-    // Add wobble for natural swimming
-    this.wobblePhase += delta * 3;
-    const wobble = Math.sin(this.wobblePhase) * 0.05;
+    // Drift sideways in assigned direction
+    this.lateralOffset += this.moveDirection * this.driftSpeed * delta;
+
+    // Bounce back at river bounds
+    if (this.lateralOffset > 0.4) {
+      this.lateralOffset = 0.4;
+      this.moveDirection = -1;
+    } else if (this.lateralOffset < -0.4) {
+      this.lateralOffset = -0.4;
+      this.moveDirection = 1;
+    }
+
+    // Natural wobble (subtle)
+    this.wobblePhase += delta * 2;
+    const wobble = Math.sin(this.wobblePhase) * 0.03;
 
     // Calculate position from path
     const point = getRiverPoint(this.pathT);
     const width = getRiverWidth(this.pathT);
 
-    // Update position with wobble
-    this.x = point.x + (this.pathOffset + wobble) * width * 0.4;
+    this.x = point.x + (this.lateralOffset + wobble) * width;
     this.y = point.y;
 
     // Update size based on path position (perspective)
