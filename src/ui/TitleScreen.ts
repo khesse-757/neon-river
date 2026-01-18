@@ -5,6 +5,7 @@
  */
 
 import { GAME_WIDTH, GAME_HEIGHT } from '../utils/constants';
+import VERSION from '../../VERSION?raw';
 
 export class TitleScreen {
   private time: number = 0;
@@ -66,6 +67,12 @@ export class TitleScreen {
       GAME_WIDTH / 2,
       GAME_HEIGHT * 0.92
     );
+
+    // === VERSION ===
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#445555';
+    ctx.textAlign = 'right';
+    ctx.fillText(`v${VERSION.trim()}`, GAME_WIDTH - 12, GAME_HEIGHT - 12);
   }
 
   reset(): void {
