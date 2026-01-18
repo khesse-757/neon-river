@@ -38,12 +38,13 @@ npm run check          # Run all checks (pre-commit)
 
 - **Pixel art** (16-bit aesthetic)
 - Dark, moody color palette with neon accents
-- Parallax layers for depth
+- **Static background image** with dynamic fish/net overlay
 - Smooth sprite animations
 
 ### Reference
 
-See `/docs/concept-art/` for reference images.
+- Background image: `public/images/background.png` (768x1376)
+- Concept art: `src/assets/concept.png`
 
 ---
 
@@ -63,19 +64,50 @@ See `/docs/concept-art/` for reference images.
 
 ## Tech Stack
 
-| Tool        | Purpose                 | Version |
-| ----------- | ----------------------- | ------- |
-| TypeScript  | Language (strict mode)  | ^5.7    |
-| Vite        | Build tool              | ^6.0    |
-| Vitest      | Testing                 | ^2.1    |
-| ESLint      | Linting (flat config)   | ^9.0    |
-| Prettier    | Formatting              | ^3.4    |
-| Husky       | Git hooks               | ^9.1    |
-| lint-staged | Pre-commit checks       | ^15.2   |
-| PixiJS      | 2D rendering (optional) | ^8.0    |
-| Canvas API  | Alternative to PixiJS   | Native  |
+| Tool        | Purpose                | Version |
+| ----------- | ---------------------- | ------- |
+| TypeScript  | Language (strict mode) | ^5.7    |
+| Vite        | Build tool             | ^6.0    |
+| Vitest      | Testing                | ^2.1    |
+| ESLint      | Linting (flat config)  | ^9.0    |
+| Prettier    | Formatting             | ^3.4    |
+| Husky       | Git hooks              | ^9.1    |
+| lint-staged | Pre-commit checks      | ^15.2   |
+| Canvas API  | 2D rendering           | Native  |
 
-**Note**: We may use PixiJS for rendering or pure Canvas. Decide during Phase 1.
+---
+
+## Architecture
+
+### Rendering Approach
+
+The game uses a **static background image** with dynamic elements rendered on top:
+
+1. **Background Image** (`public/images/background.png`)
+   - Pre-rendered 768x1376 pixel art scene
+   - Contains: sky, moon, city, hills, water, bridge, fisherman
+   - Loaded once, drawn every frame as base layer
+
+2. **Dynamic Elements** (rendered on top)
+   - Fish entities (follow river bezier path)
+   - Electric eels (follow river with S-curve slither)
+   - Player-controlled net
+   - HUD text
+
+3. **River Path System**
+   - Fish swim along a cubic bezier curve that follows the river in the background
+   - Path defined by control points in `constants.ts`
+   - `pathT` parameter (0-1) tracks position along river
+   - Fish spawn at t=0 (between hills), exit at t=1 (catch zone)
+
+### Render Order
+
+```
+1. BackgroundImage (static scene)
+2. Fish/Eels (swimming in river)
+3. Net (player controlled)
+4. HUD (score display)
+```
 
 ---
 
@@ -84,514 +116,59 @@ See `/docs/concept-art/` for reference images.
 ```
 neon-river/
 ├── public/
-│   └── audio/                    # Audio files
-│       ├── amb_night_crickets.mp3
-│       ├── amb_night_water.mp3
-│       ├── sfx_catch.mp3
-│       ├── sfx_miss.mp3
-│       ├── sfx_shock.mp3
-│       ├── sfx_win.mp3
-│       └── sfx_lose.mp3
+│   ├── images/
+│   │   └── background.png         # Static background (768x1376)
+│   └── audio/                     # Audio files (future)
 │
 ├── src/
-│   ├── main.ts                   # Entry point
+│   ├── main.ts                    # Entry point, game loop
 │   │
-│   ├── assets/                   # 🎨 ALL VISUAL ASSETS HERE
-│   │   ├── sprites/              # Sprite definitions
-│   │   │   ├── index.ts          # Export all sprites
-│   │   │   ├── fisherman.ts      # Fisherman sprite data
-│   │   │   ├── net.ts            # Net sprite data
-│   │   │   ├── lantern.ts        # Lantern sprite data
-│   │   │   ├── bluegill.ts       # Bluegill sprite + animation
-│   │   │   ├── goldenKoi.ts      # Golden Koi sprite + animation
-│   │   │   ├── electricEel.ts    # Electric Eel sprite + animation
-│   │   │   ├── bridge.ts         # Bridge tiles
-│   │   │   ├── reeds.ts          # Reeds/cattails
-│   │   │   ├── flowers.ts        # Flower sprites
-│   │   │   └── trees.ts          # Tree sprites
-│   │   │
-│   │   ├── backgrounds/          # Background layers
-│   │   │   ├── index.ts          # Export all backgrounds
-│   │   │   ├── skybox.ts         # Night sky with moon/stars
-│   │   │   ├── city.ts           # Cyberpunk city skyline
-│   │   │   ├── hills.ts          # Rolling hills layer
-│   │   │   └── water.ts          # Water surface pattern
-│   │   │
-│   │   ├── palettes/             # Color palettes
-│   │   │   ├── index.ts          # Export all palettes
-│   │   │   ├── night.ts          # Main night palette
-│   │   │   ├── fish.ts           # Fish color palettes
-│   │   │   └── neon.ts           # Cyberpunk neon colors
-│   │   │
-│   │   └── fonts/                # Pixel fonts (if needed)
-│   │       └── terminal.ts       # Monospace pixel font
+│   ├── assets/
+│   │   ├── sprites/               # Sprite definitions
+│   │   │   ├── index.ts           # Export all sprites
+│   │   │   ├── bluegill.ts        # Bluegill fish sprite
+│   │   │   ├── goldenKoi.ts       # Golden Koi sprite
+│   │   │   ├── electricEel.ts     # Electric Eel sprite
+│   │   │   └── net.ts             # Net sprite
+│   │   └── concept.png            # Concept art reference
 │   │
-│   ├── game/                     # Game logic
-│   │   ├── Game.ts               # Main game loop & state
-│   │   ├── Spawner.ts            # Fish/eel spawning logic
-│   │   ├── Collision.ts          # Collision detection
-│   │   └── Difficulty.ts         # Difficulty curve
+│   ├── entities/                  # Game entities
+│   │   ├── Bluegill.ts            # Bluegill fish (1 lb)
+│   │   ├── GoldenKoi.ts           # Golden Koi (5 lbs)
+│   │   ├── ElectricEel.ts         # Electric Eel hazard
+│   │   └── Net.ts                 # Player-controlled net
 │   │
-│   ├── entities/                 # Game entities
-│   │   ├── Entity.ts             # Base entity interface
-│   │   ├── Net.ts                # Player-controlled net
-│   │   ├── Bluegill.ts           # Bluegill fish
-│   │   ├── GoldenKoi.ts          # Golden Koi fish
-│   │   └── ElectricEel.ts        # Electric Eel hazard
+│   ├── game/                      # Game logic
+│   │   ├── Spawner.ts             # Fish/eel spawning
+│   │   └── Collision.ts           # AABB collision detection
 │   │
-│   ├── scene/                    # Scene layers
-│   │   ├── Scene.ts              # Scene manager
-│   │   ├── BackgroundLayer.ts    # Parallax background
-│   │   ├── WaterLayer.ts         # Water surface + effects
-│   │   ├── EntityLayer.ts        # Fish, eel, net
-│   │   └── ForegroundLayer.ts    # Bridge, fisherman, lantern
+│   ├── scene/
+│   │   └── BackgroundImage.ts     # Static background loader
 │   │
-│   ├── effects/                  # Visual effects
-│   │   ├── Fireflies.ts          # Firefly particles
-│   │   ├── Ripple.ts             # Water ripple on catch
-│   │   └── Spark.ts              # Eel electric spark
+│   ├── input/
+│   │   └── InputManager.ts        # Mouse/touch input
 │   │
-│   ├── audio/                    # Audio management
-│   │   └── AudioManager.ts       # Load & play sounds
+│   ├── renderer/
+│   │   └── SpriteRenderer.ts      # Sprite drawing utilities
 │   │
-│   ├── input/                    # Input handling
-│   │   └── InputManager.ts       # Mouse/touch unified input
-│   │
-│   ├── ui/                       # User interface
-│   │   ├── HUD.ts                # Weight caught/missed display
-│   │   ├── Menu.ts               # Main menu
-│   │   ├── GameOver.ts           # Game over screen
-│   │   └── WinScreen.ts          # Victory screen
-│   │
-│   ├── renderer/                 # Rendering
-│   │   ├── Renderer.ts           # Main renderer (Canvas or PixiJS)
-│   │   ├── SpriteRenderer.ts     # Sprite drawing utilities
-│   │   └── AnimationPlayer.ts    # Sprite animation handler
-│   │
-│   └── utils/                    # Utilities
-│       ├── constants.ts          # Game balance values
-│       ├── helpers.ts            # Utility functions
-│       └── types.ts              # Shared TypeScript types
+│   └── utils/
+│       ├── constants.ts           # Game balance + river path
+│       ├── riverPath.ts           # Bezier curve utilities
+│       └── types.ts               # TypeScript interfaces
 │
-├── tests/                        # Test files (mirrors src/)
+├── tests/                         # Test files
 │   ├── game/
 │   │   ├── Spawner.test.ts
-│   │   ├── Collision.test.ts
-│   │   └── Difficulty.test.ts
+│   │   └── Collision.test.ts
 │   └── utils/
 │       └── helpers.test.ts
 │
-├── docs/                         # Documentation
-│   ├── concept-art/              # Reference images
-│   ├── ASSET_INVENTORY.md        # Full asset list
-│   └── ASSET_PIPELINE.md         # How to create assets
-│
-├── .github/workflows/            # CI/CD
-│   ├── ci.yml                    # Lint, typecheck, test
-│   └── deploy.yml                # Deploy to GitHub Pages
-│
-├── .husky/
-│   └── pre-commit                # Pre-commit hook
-│
-├── index.html                    # Entry HTML
+├── index.html
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
-├── vitest.config.ts
 ├── eslint.config.js
-├── .prettierrc
-├── .gitignore
-├── VERSION
-├── bump-version.sh
-├── README.md
-└── CLAUDE.md                     # This file
-```
-
----
-
-## Asset System
-
-### Sprite Data Format
-
-All sprites are defined as TypeScript files for easy editing:
-
-```typescript
-// src/assets/sprites/bluegill.ts
-import type { SpriteDefinition } from '../types';
-import { PALETTES } from '../palettes';
-
-// 0 = transparent, 1+ = palette index
-const frames = [
-  // Frame 1
-  [
-    [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 1, 1, 3, 3, 3, 1, 1, 0, 0, 0, 0, 0],
-    // ... more rows
-  ],
-  // Frame 2
-  [
-    // ... animation frame
-  ],
-];
-
-export const BLUEGILL: SpriteDefinition = {
-  name: 'bluegill',
-  width: 16,
-  height: 12,
-  frames,
-  palette: PALETTES.FISH_BLUE,
-  animation: {
-    frameRate: 4, // frames per second
-    loop: true,
-  },
-};
-```
-
-### Palette Format
-
-```typescript
-// src/assets/palettes/fish.ts
-export const FISH_BLUE = {
-  0: 'transparent',
-  1: '#1a1a2e', // outline
-  2: '#1e3a5f', // dark blue
-  3: '#3366aa', // mid blue
-  4: '#5588cc', // light blue
-  5: '#8faabe', // belly
-  6: '#ffffff', // eye
-  7: '#4a90a0', // fin accent
-};
-```
-
-### Why This Format?
-
-1. **Easy to edit**: Change a number, change a pixel
-2. **Version controlled**: Diffs show exactly what changed
-3. **No external tools needed**: Edit in any text editor
-4. **Type safe**: TypeScript catches errors
-5. **Fast iteration**: Hot reload sees changes instantly
-
-### Updating Assets
-
-To modify a sprite:
-
-1. Open the sprite file in `src/assets/sprites/`
-2. Edit the pixel array (0 = transparent, 1+ = palette colors)
-3. Save - hot reload shows changes immediately
-
-To add a new sprite:
-
-1. Create new file in `src/assets/sprites/`
-2. Define the sprite data following the format above
-3. Export from `src/assets/sprites/index.ts`
-4. Import where needed
-
----
-
-## Development Phases
-
-### Phase 1: Foundation (Week 1)
-
-**Goal**: Rendering works, something moves on screen
-
-- [ ] Project scaffolding (Vite + TypeScript + ESLint)
-- [ ] Decide: PixiJS vs Canvas API (prototype both)
-- [ ] Basic renderer that draws a sprite
-- [ ] Game loop with delta time
-- [ ] Input manager (mouse/touch → normalized X position)
-- [ ] Draw placeholder net, make it move with input
-
-**Test**: Net follows mouse/touch smoothly
-
----
-
-### Phase 2: Core Gameplay (Week 2)
-
-**Goal**: Playable prototype with programmer art
-
-- [ ] Spawner: create fish at top of screen
-- [ ] Fish movement: swim downward
-- [ ] Collision detection: net catches fish
-- [ ] Score tracking: weight caught, weight missed
-- [ ] Win condition: reach 200 lbs
-- [ ] Lose condition: miss 20 lbs
-
-**Test**: Can play full game loop with placeholder sprites
-
----
-
-### Phase 3: Entities & Difficulty (Week 3)
-
-**Goal**: All fish types, increasing challenge
-
-- [ ] Bluegill entity (1 lb, medium speed)
-- [ ] Golden Koi entity (5 lbs, fast, rare)
-- [ ] Electric Eel entity (S-curve, instant death)
-- [ ] Difficulty curve: spawn rate increases
-- [ ] Spawn weights: probability distribution
-
-**Test**: Game feels challenging but fair
-
----
-
-### Phase 4: Scene & Layers (Week 4)
-
-**Goal**: Full visual scene with parallax
-
-- [ ] Background layer: sky, moon, stars
-- [ ] City skyline layer (subtle parallax)
-- [ ] Hills layer (slight parallax)
-- [ ] Water layer (main play area)
-- [ ] Foreground layer: bridge, fisherman, lantern
-- [ ] Layer ordering and rendering
-
-**Test**: Scene looks like concept art
-
----
-
-### Phase 5: Polish Sprites (Week 5)
-
-**Goal**: Final pixel art for all elements
-
-- [ ] Fisherman sprite (seated, detailed)
-- [ ] Net sprite (cyber hinge detail)
-- [ ] Lantern sprite (warm glow)
-- [ ] Bluegill sprite (swim animation)
-- [ ] Golden Koi sprite (swim animation)
-- [ ] Electric Eel sprite (slither animation, sparks)
-- [ ] Bridge tiles
-- [ ] Reeds, flowers, trees
-- [ ] City skyline
-
-**Test**: Visuals are cohesive and polished
-
----
-
-### Phase 6: Effects (Week 6)
-
-**Goal**: Juice and feedback
-
-- [ ] Firefly particles (floating, glowing)
-- [ ] Water ripple on fish catch
-- [ ] Eel electric spark effect
-- [ ] Screen flash on eel catch
-- [ ] Net "bounce" animation on catch
-- [ ] Fish glow (subtle bioluminescence)
-- [ ] Lantern flicker
-
-**Test**: Catching fish feels satisfying
-
----
-
-### Phase 7: Audio (Week 7)
-
-**Goal**: Immersive soundscape
-
-- [ ] Ambient: crickets (loop)
-- [ ] Ambient: water (loop)
-- [ ] Ambient: distant city hum (loop)
-- [ ] SFX: fish catch (splash + chime)
-- [ ] SFX: fish miss (subtle splash)
-- [ ] SFX: eel shock (electric zap)
-- [ ] SFX: win jingle
-- [ ] SFX: lose sting
-- [ ] Audio manager with volume control
-
-**Test**: Close eyes, game sounds peaceful/immersive
-
----
-
-### Phase 8: UI & Menus (Week 8)
-
-**Goal**: Complete user experience
-
-- [ ] HUD: weight caught display
-- [ ] HUD: weight missed display (with warning state)
-- [ ] Main menu: title, start button
-- [ ] Pause functionality
-- [ ] Game over screen: stats, retry button
-- [ ] Win screen: celebration, play again
-- [ ] Settings: volume controls
-
-**Test**: Full user flow from menu to game to end
-
----
-
-### Phase 9: Mobile & Performance (Week 9)
-
-**Goal**: Smooth on all devices
-
-- [ ] Touch input testing
-- [ ] Responsive canvas sizing
-- [ ] Performance profiling
-- [ ] Optimize sprite batching
-- [ ] Test on actual mobile devices
-- [ ] PWA setup (optional)
-
-**Test**: 60fps on desktop, 30fps+ on mobile
-
----
-
-### Phase 10: Final Polish & Deploy (Week 10)
-
-**Goal**: Ship it!
-
-- [ ] Bug fixes from playtesting
-- [ ] Final balance tweaks
-- [ ] README documentation
-- [ ] GitHub Pages deployment
-- [ ] Custom domain (optional)
-- [ ] Social preview image
-
-**Test**: Friends can play via link, no issues
-
----
-
-## Development Workflow
-
-### Starting a Session
-
-```bash
-cd neon-river
-npm run dev
-# Open http://localhost:5173
-```
-
-### Making Changes
-
-1. Edit code
-2. Save - hot reload updates browser
-3. Test manually
-4. Write/update tests if needed
-
-### Before Committing
-
-Pre-commit hook runs automatically:
-
-```bash
-npm run lint      # ESLint
-npm run typecheck # TypeScript
-npm run test:run  # Vitest
-```
-
-If any fail, commit is blocked. Fix issues first.
-
-### Committing
-
-```bash
-git add .
-git commit -m "feat: add bluegill swim animation"
-```
-
-**Commit message prefixes**:
-
-- `feat:` - New feature
-- `fix:` - Bug fix
-- `refactor:` - Code restructure
-- `style:` - Formatting only
-- `test:` - Add/update tests
-- `docs:` - Documentation
-- `chore:` - Maintenance
-
-### Version Bumping
-
-Before releases or milestones:
-
-```bash
-./bump-version.sh
-# Select: 1) Patch  2) Minor  3) Major
-```
-
-Then commit the version change:
-
-```bash
-git add VERSION package.json
-git commit -m "chore: bump version to X.Y.Z"
-git tag vX.Y.Z
-git push origin main --tags
-```
-
----
-
-## Code Guidelines
-
-### File Size
-
-- **Target**: <150 lines per file
-- **Max**: 200 lines
-- Split if larger
-
-### Naming
-
-| Type             | Convention      | Example            |
-| ---------------- | --------------- | ------------------ |
-| Files (classes)  | PascalCase      | `GoldenKoi.ts`     |
-| Files (utils)    | camelCase       | `helpers.ts`       |
-| Classes          | PascalCase      | `class Spawner`    |
-| Functions        | camelCase       | `spawnFish()`      |
-| Constants        | SCREAMING_SNAKE | `MAX_WEIGHT`       |
-| Types/Interfaces | PascalCase      | `interface Entity` |
-
-### Sprite Data
-
-- Use descriptive comments for complex sprites
-- Group related frames together
-- Keep palette references at top of file
-
-### Game Logic
-
-```typescript
-// Good: Pure function, testable
-function checkCollision(a: BoundingBox, b: BoundingBox): boolean {
-  return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
-  );
-}
-
-// Good: Clear state management
-class Game {
-  private state: 'menu' | 'playing' | 'paused' | 'gameover' | 'win' = 'menu';
-
-  setState(newState: GameState): void {
-    this.state = newState;
-    this.onStateChange(newState);
-  }
-}
-```
-
----
-
-## Testing Strategy
-
-### What to Test
-
-| Category            | Test?  | Why                      |
-| ------------------- | ------ | ------------------------ |
-| Collision detection | ✅ Yes | Core mechanic, pure math |
-| Spawner logic       | ✅ Yes | Timing, probabilities    |
-| Difficulty curve    | ✅ Yes | Balance verification     |
-| Score calculations  | ✅ Yes | Win/lose conditions      |
-| Input normalization | ✅ Yes | Edge cases               |
-| Rendering           | ❌ No  | Visual verification      |
-| Animations          | ❌ No  | Visual verification      |
-
-### Test Location
-
-Tests mirror source structure:
-
-```
-src/game/Spawner.ts      → tests/game/Spawner.test.ts
-src/utils/helpers.ts     → tests/utils/helpers.test.ts
-```
-
-### Running Tests
-
-```bash
-npm run test        # Watch mode (during development)
-npm run test:run    # Single run (CI/pre-commit)
+└── CLAUDE.md                      # This file
 ```
 
 ---
@@ -600,6 +177,10 @@ npm run test:run    # Single run (CI/pre-commit)
 
 ```typescript
 // src/utils/constants.ts
+
+// Canvas dimensions (match background image)
+export const GAME_WIDTH = 768;
+export const GAME_HEIGHT = 1376;
 
 // Game rules
 export const WIN_WEIGHT = 200;
@@ -621,145 +202,207 @@ export const SPAWN_WEIGHTS = {
   ELECTRIC_EEL: 0.1,
 };
 
-// Entity speeds (pixels per second at base)
+// Entity speeds (path units per second, where 1.0 = full river path)
 export const SPEEDS = {
-  BLUEGILL: 60,
-  GOLDEN_KOI: 100,
-  ELECTRIC_EEL: 40,
+  BLUEGILL: 0.12, // ~8 seconds to traverse river
+  GOLDEN_KOI: 0.18, // ~5.5 seconds
+  ELECTRIC_EEL: 0.08, // ~12 seconds
 };
 
-// Canvas
-export const GAME_WIDTH = 480;
-export const GAME_HEIGHT = 640;
-export const PIXEL_SCALE = 2; // Render at 2x for crisp pixels
+// River path (cubic bezier control points)
+export const RIVER_PATH = {
+  start: { x: GAME_WIDTH * 0.52, y: GAME_HEIGHT * 0.18 }, // Spawn
+  cp1: { x: GAME_WIDTH * 0.6, y: GAME_HEIGHT * 0.32 }, // Curves right
+  cp2: { x: GAME_WIDTH * 0.4, y: GAME_HEIGHT * 0.55 }, // Curves left
+  end: { x: GAME_WIDTH * 0.5, y: GAME_HEIGHT * 0.78 }, // Catch zone
+};
+
+// River width (perspective widening)
+export const RIVER_WIDTH_START = GAME_WIDTH * 0.1; // ~77px at spawn
+export const RIVER_WIDTH_END = GAME_WIDTH * 0.45; // ~346px at catch zone
+
+// Net settings
+export const NET_Y = GAME_HEIGHT * 0.75;
+export const NET_MIN_X = GAME_WIDTH * 0.18;
+export const NET_MAX_X = GAME_WIDTH * 0.82;
 ```
 
 ---
 
-## Asset Checklist
+## River Path System
 
-### Sprites (src/assets/sprites/)
+Fish follow a bezier curve that maps to the river in the background image.
 
-**Characters & Props**
+### How It Works
 
-- [ ] `fisherman.ts` - Seated fisherman, straw hat (static)
-- [ ] `net.ts` - Cyber-hinged net (idle + catch animation)
-- [ ] `lantern.ts` - Paper lantern (flicker animation)
+```typescript
+// src/utils/riverPath.ts
 
-**Entities**
+// Get position on river at t (0 = spawn, 1 = exit)
+getRiverPoint(t: number): { x: number; y: number }
 
-- [ ] `bluegill.ts` - Bluegill fish (2-4 frame swim)
-- [ ] `goldenKoi.ts` - Golden Koi (2-4 frame swim)
-- [ ] `electricEel.ts` - Electric Eel (slither + spark)
+// Get river width at t (narrow at top, wide at bottom)
+getRiverWidth(t: number): number
 
-**Environment**
+// Get random spawn position
+getSpawnPosition(): { x, y, pathT, pathOffset }
+```
 
-- [ ] `bridge.ts` - Stone bridge tiles
-- [ ] `reeds.ts` - Cattails/reeds (sway animation optional)
-- [ ] `flowers.ts` - 2-3 color variants
-- [ ] `trees.ts` - 2-3 tree variants
+### Fish Movement
 
-### Backgrounds (src/assets/backgrounds/)
+Each fish tracks:
 
-- [ ] `skybox.ts` - Night sky, moon, stars
-- [ ] `city.ts` - Cyberpunk skyline silhouette
-- [ ] `hills.ts` - Rolling hills layer
-- [ ] `water.ts` - Water surface pattern/tiles
+- `pathT`: Position along river (0-1), incremented by `speed * delta`
+- `pathOffset`: Lateral position within river (-1 to 1)
+- `wobblePhase`: Sinusoidal offset for natural swimming
 
-### Palettes (src/assets/palettes/)
+```typescript
+update(delta: number): void {
+  this.pathT += this.speed * delta;  // Move downstream
 
-- [ ] `night.ts` - Main scene colors
-- [ ] `fish.ts` - Bluegill, Koi palettes
-- [ ] `neon.ts` - City glow, eel spark colors
+  const point = getRiverPoint(this.pathT);
+  const width = getRiverWidth(this.pathT);
 
-### Audio (public/audio/)
+  // Position = river center + offset + wobble
+  this.x = point.x + this.pathOffset * width * 0.4;
+  this.y = point.y;
+}
+```
 
-**Ambient**
+### Adjusting the River Path
 
-- [ ] `amb_night_crickets.mp3`
-- [ ] `amb_night_water.mp3`
-- [ ] `amb_city_hum.mp3` (very subtle)
+If fish don't align with the river in your background image:
 
-**SFX**
+1. Open `src/utils/constants.ts`
+2. Adjust `RIVER_PATH` control points (percentages of canvas)
+3. Hot reload to see changes
+4. Repeat until fish follow the visible river
 
-- [ ] `sfx_catch.mp3`
-- [ ] `sfx_miss.mp3`
-- [ ] `sfx_shock.mp3`
-- [ ] `sfx_win.mp3`
-- [ ] `sfx_lose.mp3`
+---
+
+## Development Phases
+
+### Phase 1: Foundation ✅
+
+- [x] Project scaffolding (Vite + TypeScript + ESLint)
+- [x] Canvas API rendering
+- [x] Game loop with delta time
+- [x] Input manager (mouse/touch → normalized X)
+- [x] Net moves with input
+
+### Phase 2: Core Gameplay ✅
+
+- [x] Spawner: create fish at river source
+- [x] Fish movement: follow river bezier path
+- [x] Collision detection: net catches fish
+- [x] Score tracking: weight caught/missed
+- [x] Win condition: 200 lbs
+- [x] Lose condition: miss 20 lbs
+
+### Phase 3: Entities & Difficulty ✅
+
+- [x] Bluegill entity (1 lb, path speed 0.12)
+- [x] Golden Koi entity (5 lbs, path speed 0.18)
+- [x] Electric Eel entity (S-curve slither, instant death)
+- [x] Difficulty curve: spawn rate increases
+- [x] Spawn weights: 70% / 20% / 10%
+
+### Phase 4: Scene & Layers ✅
+
+- [x] Static background image (768x1376)
+- [x] River path system (bezier curve)
+- [x] Responsive canvas scaling
+- [x] Proper render order
+
+### Phase 5+: Future Work
+
+- [ ] Polish fish sprites (swim animations)
+- [ ] Visual effects (catch ripple, eel spark)
+- [ ] Audio (ambient, SFX)
+- [ ] UI improvements (menus, pause)
+- [ ] Mobile optimization
 
 ---
 
 ## Common Tasks
 
+### Adjust Fish Speed
+
+Edit `SPEEDS` in `src/utils/constants.ts`:
+
+```typescript
+export const SPEEDS = {
+  BLUEGILL: 0.12, // Slower = easier to catch
+  GOLDEN_KOI: 0.18, // Faster = harder to catch
+  ELECTRIC_EEL: 0.08,
+};
+```
+
+### Adjust River Path
+
+Edit `RIVER_PATH` in `src/utils/constants.ts`:
+
+```typescript
+export const RIVER_PATH = {
+  start: { x: GAME_WIDTH * 0.52, y: GAME_HEIGHT * 0.18 },
+  cp1: { x: GAME_WIDTH * 0.6, y: GAME_HEIGHT * 0.32 },
+  cp2: { x: GAME_WIDTH * 0.4, y: GAME_HEIGHT * 0.55 },
+  end: { x: GAME_WIDTH * 0.5, y: GAME_HEIGHT * 0.78 },
+};
+```
+
+### Replace Background Image
+
+1. Create new image at 768x1376 pixels (or any 9:16 ratio)
+2. Replace `public/images/background.png`
+3. Update `GAME_WIDTH` and `GAME_HEIGHT` in constants if dimensions changed
+4. Adjust `RIVER_PATH` to match the river in your new image
+
 ### Add a New Fish Type
 
 1. Create sprite: `src/assets/sprites/newFish.ts`
-2. Add palette if needed: `src/assets/palettes/fish.ts`
-3. Export from: `src/assets/sprites/index.ts`
-4. Create entity: `src/entities/NewFish.ts`
-5. Add to spawner: `src/game/Spawner.ts`
-6. Add constants: `src/utils/constants.ts`
-7. Test spawn probability
-
-### Adjust Game Balance
-
-1. Open `src/utils/constants.ts`
-2. Modify values (weights, speeds, spawn rates)
-3. Run tests: `npm run test`
-4. Playtest
-
-### Change a Sprite
-
-1. Open sprite file in `src/assets/sprites/`
-2. Edit pixel array
-3. Save - hot reload shows changes
-4. Adjust palette if needed
-
-### Add a Sound Effect
-
-1. Add `.mp3` file to `public/audio/`
-2. Register in `src/audio/AudioManager.ts`
-3. Call `audioManager.play('sfx_name')` where needed
+2. Create entity: `src/entities/NewFish.ts` (copy from Bluegill.ts)
+3. Add to spawner: `src/game/Spawner.ts`
+4. Add constants: weight, speed, spawn probability
 
 ---
 
 ## Troubleshooting
 
-### Sprite not showing
+### Fish not following river
 
-- Check export from `src/assets/sprites/index.ts`
-- Verify palette colors aren't all transparent
-- Check render layer order
+- Check `RIVER_PATH` control points align with background image
+- Verify fish `pathT` is incrementing (check `speed` value)
+- Add debug rendering to visualize bezier curve
 
-### Animation not playing
+### Background not loading
 
-- Verify `animation.loop` is true for looping
-- Check `frameRate` isn't 0
-- Ensure multiple frames exist in `frames` array
+- Verify `public/images/background.png` exists
+- Check browser console for 404 errors
+- Ensure path starts with `/images/` (Vite serves from `public/`)
 
-### Input feels laggy
+### Canvas scaling issues
 
-- Use `requestAnimationFrame` not `setInterval`
-- Check delta time calculation
-- Profile with browser dev tools
+- Canvas internal resolution: 768x1376
+- CSS scales to fit viewport while maintaining aspect ratio
+- Check `scaleCanvas()` function in `main.ts`
 
 ### Build fails
 
-- Run `npm run typecheck` for TypeScript errors
-- Run `npm run lint` for ESLint errors
-- Check console for specific error messages
+```bash
+npm run typecheck  # Check for TypeScript errors
+npm run lint       # Check for ESLint errors
+```
 
 ---
 
 ## Resources
 
-- [PixiJS Docs](https://pixijs.com/guides)
 - [Canvas API MDN](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API)
-- [Freesound.org](https://freesound.org/) - Audio sources
+- [Bezier Curves](https://javascript.info/bezier-curve)
 - [Lospec](https://lospec.com/palette-list) - Pixel art palettes
 
 ---
 
-_Last updated: Phase 0 (Planning)_
+_Last updated: Phase 4 (Scene & Layers)_
 _Current version: 0.1.0_

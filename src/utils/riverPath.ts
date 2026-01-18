@@ -1,26 +1,14 @@
 /**
- * River Path - Shared bezier curve calculations for river flow
+ * RiverPath - Utility functions for river path calculations
  *
- * Used by Water (for rendering) and fish entities (for movement).
- * The path goes from t=0 (source between hills) to t=1 (bottom of screen).
+ * The river path is defined as a cubic bezier curve.
+ * t=0 is the spawn point (top), t=1 is the catch zone (bottom).
  */
 
-import { GAME_WIDTH, GAME_HEIGHT } from './constants';
-
-// River path control points (cubic bezier)
-export const RIVER_PATH = {
-  start: { x: GAME_WIDTH * 0.5, y: GAME_HEIGHT * 0.25 },
-  cp1: { x: GAME_WIDTH * 0.58, y: GAME_HEIGHT * 0.35 },
-  cp2: { x: GAME_WIDTH * 0.42, y: GAME_HEIGHT * 0.65 },
-  end: { x: GAME_WIDTH * 0.5, y: GAME_HEIGHT * 1.05 },
-};
-
-// River width: narrow at source, wide at viewer
-export const RIVER_WIDTH_START = 35;
-export const RIVER_WIDTH_END = 200;
+import { RIVER_PATH, RIVER_WIDTH_START, RIVER_WIDTH_END } from './constants';
 
 /**
- * Get a point on the river center line at parameter t (0-1)
+ * Get a point on the river centerline at parameter t (0-1)
  */
 export function getRiverPoint(t: number): { x: number; y: number } {
   const mt = 1 - t;
@@ -44,7 +32,7 @@ export function getRiverPoint(t: number): { x: number; y: number } {
 }
 
 /**
- * Get river width at parameter t (eased for natural widening)
+ * Get river width at parameter t (eased for natural perspective widening)
  */
 export function getRiverWidth(t: number): number {
   const eased = t * t;
@@ -52,21 +40,26 @@ export function getRiverWidth(t: number): number {
 }
 
 /**
- * Get spawn position - at the river bend where fish emerge
- * Returns a position within the river at the spawn point
+ * Get spawn position for new fish/eel
  */
-export function getSpawnPosition(): { x: number; y: number; t: number } {
-  // Spawn at t = 0 (river source between hills)
-  const t = 0;
-  const point = getRiverPoint(t);
-  const width = getRiverWidth(t);
+export function getSpawnPosition(): {
+  x: number;
+  y: number;
+  pathT: number;
+  pathOffset: number;
+} {
+  const pathT = 0;
+  const point = getRiverPoint(pathT);
+  const width = getRiverWidth(pathT);
 
-  // Random position within the river width
-  const offset = (Math.random() - 0.5) * width * 0.6;
+  // Random lateral offset within river (-0.8 to 0.8)
+  const pathOffset = (Math.random() - 0.5) * 1.6;
+  const x = point.x + pathOffset * width * 0.4;
 
   return {
-    x: point.x + offset,
+    x,
     y: point.y,
-    t,
+    pathT,
+    pathOffset,
   };
 }

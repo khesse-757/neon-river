@@ -7,7 +7,8 @@
 import {
   GAME_WIDTH,
   GAME_HEIGHT,
-  BOUNDS,
+  NET_MIN_X,
+  NET_MAX_X,
   WIN_WEIGHT,
   MAX_MISSED_WEIGHT,
 } from './utils/constants';
@@ -15,8 +16,7 @@ import { InputManager } from './input/InputManager';
 import { Net } from './entities/Net';
 import { Spawner } from './game/Spawner';
 import { checkCollision } from './game/Collision';
-import { Background } from './scene/Background';
-import { Water } from './scene/Water';
+import { BackgroundImage } from './scene/BackgroundImage';
 
 type GameState = 'playing' | 'win' | 'lose';
 
@@ -36,12 +36,24 @@ function init(): void {
 
   // Scale canvas to fill viewport while maintaining aspect ratio
   function scaleCanvas(): void {
-    const scaleX = window.innerWidth / GAME_WIDTH;
-    const scaleY = window.innerHeight / GAME_HEIGHT;
-    const scale = Math.min(scaleX, scaleY) * 0.95; // 95% to add small margin
+    const gameRatio = GAME_WIDTH / GAME_HEIGHT;
+    const windowRatio = window.innerWidth / window.innerHeight;
 
-    canvas.style.width = `${GAME_WIDTH * scale}px`;
-    canvas.style.height = `${GAME_HEIGHT * scale}px`;
+    let displayWidth: number;
+    let displayHeight: number;
+
+    if (windowRatio > gameRatio) {
+      // Window wider than game - fit to height
+      displayHeight = window.innerHeight * 0.98;
+      displayWidth = displayHeight * gameRatio;
+    } else {
+      // Window taller than game - fit to width
+      displayWidth = window.innerWidth * 0.98;
+      displayHeight = displayWidth / gameRatio;
+    }
+
+    canvas.style.width = `${displayWidth}px`;
+    canvas.style.height = `${displayHeight}px`;
   }
 
   scaleCanvas();
@@ -54,8 +66,7 @@ function init(): void {
 
   // Create game systems
   const inputManager = new InputManager(canvas);
-  const background = new Background();
-  const water = new Water();
+  const background = new BackgroundImage();
   const net = new Net();
   const spawner = new Spawner();
 
@@ -84,16 +95,13 @@ function init(): void {
     const delta = (currentTime - lastTime) / 1000;
     lastTime = currentTime;
 
-    // Always update water animation
-    water.update(delta);
-
     // Update game logic (only when playing)
     if (gameState === 'playing') {
       timeElapsed += delta;
 
       // Update net position from input
-      const minX = BOUNDS.LEFT;
-      const maxX = BOUNDS.RIGHT - net.width;
+      const minX = NET_MIN_X;
+      const maxX = NET_MAX_X - net.width;
       net.setX(inputManager.getWorldX(minX, maxX));
       net.update(delta);
 
@@ -128,12 +136,11 @@ function init(): void {
       }
     }
 
-    // Render (ctx is checked non-null before gameLoop is called)
+    // Render
     render(
       ctx!,
       gameState,
       background,
-      water,
       net,
       spawner,
       caughtWeight,
@@ -150,42 +157,32 @@ function init(): void {
 function render(
   ctx: CanvasRenderingContext2D,
   gameState: GameState,
-  background: Background,
-  water: Water,
+  background: BackgroundImage,
   net: Net,
   spawner: Spawner,
   caughtWeight: number,
   timeElapsed: number,
   wasShocked: boolean
 ): void {
-  // 1. Draw background layers (sky, moon, stars, city, hills)
+  // 1. Draw background image (entire scene)
   background.render(ctx);
 
-  // 2. Draw water (below hills, above fish)
-  water.render(ctx);
-
-  // Draw title
-  ctx.fillStyle = '#4ecdc4';
-  ctx.font = '16px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('NEON RIVER', GAME_WIDTH / 2, 40);
-
-  // 3. Draw fish and eels (they swim in the water)
+  // 2. Draw fish and eels (they swim in the water)
   spawner.render(ctx);
 
-  // 4. Draw net
+  // 3. Draw net
   net.render(ctx);
 
-  // Draw HUD
-  ctx.font = '14px monospace';
+  // 4. Draw HUD (scaled for larger canvas)
+  ctx.font = '24px monospace';
   ctx.textAlign = 'left';
   ctx.fillStyle = '#4ecdc4';
-  ctx.fillText(`Caught: ${caughtWeight}/${WIN_WEIGHT} lbs`, 10, 30);
+  ctx.fillText(`Caught: ${caughtWeight}/${WIN_WEIGHT} lbs`, 20, 50);
   ctx.fillStyle = '#ff6b6b';
   ctx.fillText(
     `Missed: ${spawner.getMissedWeight()}/${MAX_MISSED_WEIGHT} lbs`,
-    10,
-    50
+    20,
+    85
   );
 
   // Draw win/lose overlay
@@ -209,15 +206,15 @@ function drawEndScreen(
   ctx.fillStyle = 'rgba(10, 10, 26, 0.85)';
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-  // Title
+  // Title (scaled for larger canvas)
   ctx.fillStyle = color;
-  ctx.font = 'bold 32px monospace';
+  ctx.font = 'bold 56px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText(title, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60);
+  ctx.fillText(title, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 100);
 
   // Stats
   ctx.fillStyle = '#ffffff';
-  ctx.font = '16px monospace';
+  ctx.font = '28px monospace';
   ctx.fillText(
     `Fish caught: ${caughtWeight} lbs`,
     GAME_WIDTH / 2,
@@ -226,13 +223,13 @@ function drawEndScreen(
   ctx.fillText(
     `Time: ${Math.floor(timeElapsed)}s`,
     GAME_WIDTH / 2,
-    GAME_HEIGHT / 2 + 30
+    GAME_HEIGHT / 2 + 50
   );
 
   // Restart prompt
   ctx.fillStyle = '#888888';
-  ctx.font = '14px monospace';
-  ctx.fillText('Click to play again', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 80);
+  ctx.font = '24px monospace';
+  ctx.fillText('Click to play again', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 130);
 }
 
 if (document.readyState === 'loading') {

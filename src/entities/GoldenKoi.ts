@@ -2,17 +2,15 @@
  * Golden Koi Fish Entity
  *
  * Rare fish worth 5 lbs. Follows the river curve, swims faster than Bluegill.
- * Has prominent golden bioluminescent glow.
  */
 
 import type { FishEntity, BoundingBox } from '../utils/types';
-import { GOLDEN_KOI_WEIGHT, SPEEDS, GAME_HEIGHT } from '../utils/constants';
+import { GOLDEN_KOI_WEIGHT, SPEEDS } from '../utils/constants';
 import { getRiverPoint, getRiverWidth } from '../utils/riverPath';
 import { GOLDEN_KOI } from '../assets/sprites';
 import { SpriteRenderer } from '../renderer/SpriteRenderer';
 
 const SPRITE_SCALE = 2;
-const OFF_SCREEN_MARGIN = 50;
 
 export class GoldenKoi implements FishEntity {
   x: number;
@@ -31,7 +29,12 @@ export class GoldenKoi implements FishEntity {
   private pathOffset: number;
   private wobblePhase: number;
 
-  constructor(x: number, y: number, pathT: number = 0, pathOffset: number = 0) {
+  constructor(
+    _x: number,
+    _y: number,
+    pathT: number = 0,
+    pathOffset: number = 0
+  ) {
     this.renderer = new SpriteRenderer(GOLDEN_KOI);
     const dims = this.renderer.getDimensions();
 
@@ -45,12 +48,6 @@ export class GoldenKoi implements FishEntity {
     this.x = point.x + pathOffset * width * 0.4;
     this.y = point.y;
 
-    // Override with provided x, y if not following path from start
-    if (pathT === 0 && pathOffset === 0) {
-      this.x = x;
-      this.y = y;
-    }
-
     this.width = dims.width * SPRITE_SCALE;
     this.height = dims.height * SPRITE_SCALE;
   }
@@ -59,12 +56,11 @@ export class GoldenKoi implements FishEntity {
    * Update fish position - follows river curve (faster than Bluegill)
    */
   update(delta: number): void {
-    // Move along the river path
-    const pathSpeed = this.speed / (GAME_HEIGHT * 0.8);
-    this.pathT += pathSpeed * delta;
+    // Move along the river path (speed is in path units per second)
+    this.pathT += this.speed * delta;
 
-    // Add wobble for natural swimming
-    this.wobblePhase += delta * 4; // Faster wobble
+    // Add wobble for natural swimming (faster wobble)
+    this.wobblePhase += delta * 4;
     const wobble = Math.sin(this.wobblePhase) * 0.06;
 
     // Calculate position from path
@@ -102,9 +98,9 @@ export class GoldenKoi implements FishEntity {
   }
 
   /**
-   * Check if fish has left the screen (past end of river path)
+   * Check if fish has exited the play area
    */
   isOffScreen(): boolean {
-    return this.y > GAME_HEIGHT + OFF_SCREEN_MARGIN || this.pathT > 1.1;
+    return this.pathT >= 1.0;
   }
 }

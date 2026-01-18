@@ -6,17 +6,16 @@
  */
 
 import type { HazardEntity, BoundingBox } from '../utils/types';
-import { SPEEDS, GAME_HEIGHT } from '../utils/constants';
+import { SPEEDS } from '../utils/constants';
 import { getRiverPoint, getRiverWidth } from '../utils/riverPath';
 import { ELECTRIC_EEL } from '../assets/sprites';
 import { SpriteRenderer } from '../renderer/SpriteRenderer';
 
 const SPRITE_SCALE = 2;
-const OFF_SCREEN_MARGIN = 50;
 
 // S-curve slither parameters (overlaid on river path)
-const SLITHER_AMPLITUDE = 0.3; // How far it sways (fraction of river width)
-const SLITHER_FREQUENCY = 3; // Oscillations per river length
+const SLITHER_AMPLITUDE = 0.3;
+const SLITHER_FREQUENCY = 3;
 
 export class ElectricEel implements HazardEntity {
   x: number;
@@ -58,9 +57,8 @@ export class ElectricEel implements HazardEntity {
    * Update eel position - follows river with S-curve slither
    */
   update(delta: number): void {
-    // Move along the river path
-    const pathSpeed = this.speed / (GAME_HEIGHT * 0.8);
-    this.pathT += pathSpeed * delta;
+    // Move along the river path (speed is in path units per second)
+    this.pathT += this.speed * delta;
 
     // Calculate position from path
     const point = getRiverPoint(this.pathT);
@@ -73,7 +71,7 @@ export class ElectricEel implements HazardEntity {
     // Combine base offset with slither
     const totalOffset = this.baseOffset + slitherOffset;
 
-    // Update position (stay within river bounds)
+    // Update position
     this.x = point.x + totalOffset * width * 0.4;
     this.y = point.y;
 
@@ -104,9 +102,9 @@ export class ElectricEel implements HazardEntity {
   }
 
   /**
-   * Check if eel has left the screen
+   * Check if eel has exited the play area
    */
   isOffScreen(): boolean {
-    return this.y > GAME_HEIGHT + OFF_SCREEN_MARGIN || this.pathT > 1.1;
+    return this.pathT >= 1.0;
   }
 }
