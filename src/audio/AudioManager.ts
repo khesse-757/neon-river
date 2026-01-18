@@ -1,47 +1,86 @@
 /**
- * AudioManager - Handles all game audio
+ * AudioManager - Handles all game audio with Web Audio API
  *
- * Loads and plays sound effects, manages mute state with persistence.
+ * Uses Web Audio API for low-latency playback on mobile.
+ * Pre-decodes sounds into buffers for instant playback.
  */
 
 export class AudioManager {
-  private sounds: Map<string, HTMLAudioElement> = new Map();
+  private context: AudioContext | null = null;
+  private buffers: Map<string, AudioBuffer> = new Map();
   private muted: boolean = false;
   private volume: number = 0.5;
+  private initialized: boolean = false;
 
   constructor() {
     this.loadMuteState();
-    this.loadSounds();
   }
 
-  private loadSounds(): void {
-    // Preload all sound effects
-    this.loadSound('catch', '/audio/water_net.wav');
-    // Future sounds:
-    // this.loadSound('miss', '/audio/sfx_miss.mp3');
-    // this.loadSound('shock', '/audio/sfx_shock.mp3');
-    // this.loadSound('win', '/audio/sfx_win.mp3');
-    // this.loadSound('lose', '/audio/sfx_lose.mp3');
+  // Must be called after user interaction (tap/click)
+  async init(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      // Create audio context (requires user gesture on mobile)
+      this.context = new (
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext
+      )();
+
+      // Resume if suspended (mobile browsers)
+      if (this.context.state === 'suspended') {
+        await this.context.resume();
+      }
+
+      // Preload all sounds
+      await this.loadSound('catch', '/audio/water_net.wav');
+      // Future sounds:
+      // await this.loadSound('miss', '/audio/sfx_miss.mp3');
+      // await this.loadSound('shock', '/audio/sfx_shock.mp3');
+
+      this.initialized = true;
+    } catch {
+      // Audio initialization failed
+    }
   }
 
-  private loadSound(name: string, path: string): void {
-    const audio = new Audio(path);
-    audio.preload = 'auto';
-    audio.volume = this.volume;
-    this.sounds.set(name, audio);
+  private async loadSound(name: string, path: string): Promise<void> {
+    if (!this.context) return;
+
+    try {
+      const response = await fetch(path);
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await this.context.decodeAudioData(arrayBuffer);
+      this.buffers.set(name, audioBuffer);
+    } catch {
+      // Failed to load sound
+    }
   }
 
   play(name: string): void {
-    if (this.muted) return;
+    if (this.muted || !this.context || !this.initialized) return;
 
-    const sound = this.sounds.get(name);
-    if (sound) {
-      // Clone for overlapping plays (multiple fish caught quickly)
-      const clone = sound.cloneNode() as HTMLAudioElement;
-      clone.volume = this.volume;
-      clone.play().catch(() => {
-        // Ignore autoplay errors (user hasn't interacted yet)
-      });
+    const buffer = this.buffers.get(name);
+    if (!buffer) return;
+
+    try {
+      // Create buffer source (one-shot, very low latency)
+      const source = this.context.createBufferSource();
+      source.buffer = buffer;
+
+      // Create gain node for volume control
+      const gainNode = this.context.createGain();
+      gainNode.gain.value = this.volume;
+
+      // Connect: source -> gain -> output
+      source.connect(gainNode);
+      gainNode.connect(this.context.destination);
+
+      // Play immediately
+      source.start(0);
+    } catch {
+      // Failed to play sound
     }
   }
 
@@ -57,9 +96,6 @@ export class AudioManager {
 
   setVolume(vol: number): void {
     this.volume = Math.max(0, Math.min(1, vol));
-    this.sounds.forEach((sound) => {
-      sound.volume = this.volume;
-    });
   }
 
   // Persist mute preference
@@ -80,6 +116,10 @@ export class AudioManager {
     } catch {
       // localStorage not available
     }
+  }
+
+  isInitialized(): boolean {
+    return this.initialized;
   }
 }
 

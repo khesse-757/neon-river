@@ -93,6 +93,15 @@ function init(): void {
   let gameState: GameState = 'title';
   let caughtWeight = 0;
   let pendingShock = false; // Waiting for shock effect before gameover
+  let audioInitialized = false; // Track if Web Audio API is initialized
+
+  // Initialize audio on first user interaction (required for mobile)
+  async function ensureAudioInitialized(): Promise<void> {
+    if (!audioInitialized) {
+      await audioManager.init();
+      audioInitialized = true;
+    }
+  }
 
   // Update cursor based on state
   function updateCursor(): void {
@@ -295,10 +304,12 @@ function init(): void {
 
   // Set up input handlers
   canvas.addEventListener('click', (e) => {
+    ensureAudioInitialized();
     handleTap(e.clientX, e.clientY);
   });
   canvas.addEventListener('touchend', (e) => {
     e.preventDefault();
+    ensureAudioInitialized();
     const touch = e.changedTouches[0];
     if (touch) {
       handleTap(touch.clientX, touch.clientY);
@@ -306,7 +317,10 @@ function init(): void {
       handleTap();
     }
   });
-  window.addEventListener('keydown', handleKey);
+  window.addEventListener('keydown', (e) => {
+    ensureAudioInitialized();
+    handleKey(e);
+  });
 
   // Start game loop
   let lastTime = 0;

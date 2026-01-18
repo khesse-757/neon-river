@@ -58,9 +58,9 @@ export class TitleScreen {
       ctx.fillText('TAP TO START', GAME_WIDTH / 2, GAME_HEIGHT * 0.78);
     }
 
-    // === CREDITS ===
+    // === CONTROLS HINT ===
     ctx.font = '12px monospace';
-    ctx.fillStyle = '#445555';
+    ctx.fillStyle = '#a08040';
     ctx.fillText(
       'Move net with mouse or touch',
       GAME_WIDTH / 2,
