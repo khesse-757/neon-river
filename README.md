@@ -26,17 +26,17 @@ A pixel art arcade fishing game inspired by the fishing minigame from Jak and Da
 
 ### Gameplay
 
-- **Wave-based fish spawning** -- coordinated, zen-like movement patterns
-- **Progressive difficulty** -- fish speed and spawn rate increase as you catch more
-- **Three entity types** -- Bluegill (common), Golden Koi (rare, valuable), Electric Eel (deadly)
-- **Skill-based challenge** -- eel cooldown system ensures fair difficulty
+- **Wave-based fish spawning** - coordinated, zen-like movement patterns
+- **Progressive difficulty** - fish speed and spawn rate increase as you catch more
+- **Three entity types** - Bluegill (common), Golden Koi (rare, valuable), Electric Eel (deadly)
+- **Skill-based challenge** - eel cooldown system ensures fair difficulty
 
 ### Visual Style
 
 - **16-bit pixel art aesthetic** with hand-crafted sprites
 - **Animated electric sparks** on eels with cycling yellow/cyan lightning
-- **Perspective scaling** -- fish grow larger as they approach the net
-- **Smooth animations** -- net wobble on catch, shock effect on eel contact
+- **Perspective scaling** - fish grow larger as they approach the net
+- **Smooth animations** - net wobble on catch, shock effect on eel contact
 
 ### Audio
 
@@ -46,9 +46,9 @@ A pixel art arcade fishing game inspired by the fishing minigame from Jak and Da
 
 ### UI/UX
 
-- **Full game flow** -- Title screen, Pause overlay, Game Over, Win screen
-- **Mobile-friendly** -- Touch controls, responsive canvas, no keyboard required
-- **HUD** -- Stone tablet style weight display with progress indicators
+- **Full game flow** - Title screen, Pause overlay, Game Over, Win screen
+- **Mobile-friendly** - Touch controls, responsive canvas, no keyboard required
+- **HUD** - Stone tablet style weight display with progress indicators
 
 ---
 
@@ -259,13 +259,13 @@ neon-river/
 
 The project uses two GitHub Actions workflows:
 
-1. **CI** (`ci.yml`) -- Runs on every push/PR to main:
+1. **CI** (`ci.yml`) - Runs on every push/PR to main:
    - Lint check
    - TypeScript type check
    - Unit tests
    - Build verification
 
-2. **Deploy** (`deploy.yml`) -- Runs on push to main:
+2. **Deploy** (`deploy.yml`) - Runs on push to main:
    - Builds the project
    - Deploys to GitHub Pages
 
@@ -293,9 +293,9 @@ The project uses a `VERSION` file for version tracking.
 
 Select the bump type:
 
-1. **Patch** (0.0.x) -- Bug fixes
-2. **Minor** (0.x.0) -- New features
-3. **Major** (x.0.0) -- Breaking changes
+1. **Patch** (0.0.x) - Bug fixes
+2. **Minor** (0.x.0) - New features
+3. **Major** (x.0.0) - Breaking changes
 
 ### Release Process
 
@@ -311,13 +311,3 @@ git tag vX.Y.Z
 # Push with tags
 git push origin main --tags
 ```
-
----
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-Made with care by [khesse-757](https://github.com/khesse-757)
